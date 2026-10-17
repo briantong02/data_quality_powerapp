@@ -1,0 +1,842 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrQueue:
+    Properties:
+      Fill: =ColorValue("#FFFFFF")
+      OnVisible: |
+        =// A stale global error from another screen must not appear here.
+        Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+
+        // Filter option lists. Each carries an "all" row whose Code is blank.
+        // Dropdowns are fed a SINGLE-COLUMN table (Label only) so there is no ambiguity
+        // about which column displays; the code is mapped back with LookUp.
+        ClearCollect(colFDomain, {Code: "", Label: "All domains"});
+        Collect(colFDomain, ShowColumns(gblDomains, "Code", "Label"));
+
+        // The queue filters on StatusGroup: OPEN | RESOLVED | SUPPRESSED | ALL.
+        // Confirmed from the procedure body and from the dq.Lookup 'StatusGroup' set.
+        ClearCollect(colFStatus, ShowColumns(colLkStatusGroup, "Code", "Label"));
+
+        ClearCollect(colFSeverity, {Code: "", Label: "All severities"});
+        Collect(colFSeverity, ShowColumns(colLkSeverity, "Code", "Label"));
+
+        ClearCollect(colFSource, {Code: "", Label: "All sources"});
+        Collect(colFSource, ShowColumns(colLkSource, "Code", "Label"));
+
+        // The procedure translates the literal 'me' to the actor. There is NO
+        // unassigned filter - usp_GetExceptionQueue only supports
+        // "@AssigneeUpn IS NULL OR AssignedToUpn = @AssigneeUpn" - so that option
+        // is deliberately absent rather than offered and silently returning nothing.
+        ClearCollect(
+            colFAssignee,
+            {Code: "", Label: "Anyone"},
+            {Code: "me", Label: "Me"}
+        );
+
+        UpdateContext(
+            {
+                locDomain: "",
+                locStatus: "OPEN",
+                locSeverity: Coalesce(locInSeverity, ""),
+                locSource: "",
+                locAssignee: Coalesce(locInAssignee, ""),
+                locOverdue: Coalesce(locInOverdue, false),
+                locSearch: "",
+                locClusterId: locInCluster,
+                locPage: 1,
+                locBulkOpen: false,
+                locBulkStatus: ""
+            }
+        );
+        Select(btnDoLoadQueue)
+    Children:
+      - grpHeaderQU:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#0F6CBD")
+            Height: =64
+            Width: =Parent.Width
+      - txtBrandQU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#FFFFFF")
+            FontWeight: =FontWeight.Semibold
+            Height: =64
+            Size: =20
+            Text: ="Data Trust"
+            Width: =260
+            X: =32
+      - grpNavQU:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Height: =48
+            Width: =Parent.Width
+            Y: =64
+      - btnNavWorkQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrMyWork, ScreenTransition.None)
+            Text: ="My work"
+            Width: =104
+            X: =24
+            Y: =70
+      - btnNavQueueQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            Color: =ColorValue("#FFFFFF")
+            Fill: =ColorValue("#0F6CBD")
+            Height: =36
+            HoverFill: =ColorValue("#0C5A9E")
+            Text: ="Queue"
+            Width: =88
+            X: =136
+            Y: =70
+      - btnNavClustersQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrClusters, ScreenTransition.None)
+            Text: ="Clusters"
+            Width: =96
+            X: =232
+            Y: =70
+      - btnNavApprovalsQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrApprovals, ScreenTransition.None)
+            Text: ="Approvals"
+            Visible: =gblIsApprover
+            Width: =110
+            X: =336
+            Y: =70
+      - btnNavRulesQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrRules, ScreenTransition.None)
+            Text: ="Rules"
+            Visible: =gblIsAdmin
+            Width: =80
+            X: =454
+            Y: =70
+      - btnDoLoadQueue:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Height: =1
+            OnSelect: |
+              =Set(gblBusy, true);
+              Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+              IfError(
+                  ClearCollect(
+                      colQueue,
+                      Filter(
+                      db_dq_sandbox.dquspGetExceptionQueue(
+                          {
+                              ActorUpn: gblActorUpn,
+                              DomainCode: If(locDomain = "", Blank(), locDomain),
+                              StatusGroup: locStatus,
+                              SeverityCode: If(locSeverity = "", Blank(), locSeverity),
+                              SourceSystem: If(locSource = "", Blank(), locSource),
+                              AssigneeUpn: If(locAssignee = "", Blank(), locAssignee),
+                              OverdueOnly: locOverdue,
+                              SearchText: Trim(locSearch),
+                              ClusterId: locClusterId,
+                              Page: locPage,
+                              PageSize: Coalesce(gblCfg.PageSize, 50),
+                              SortColumn: "AgeDays",
+                              SortDirection: "DESC"
+                          }
+                      ).ResultSets.Table1,
+                          !IsBlank(ExceptionId)
+                      )
+                  ),
+                  Set(gblError, {IsVisible: true, Title: "Could not load the queue", Detail: FirstError.Message})
+              );
+              UpdateContext({locTotal: Coalesce(First(colQueue).TotalCount, 0)});
+              Clear(colQueueSelected);
+              Set(gblBusy, false)
+            Text: ="load"
+            Visible: =false
+            Width: =1
+            X: =-200
+            Y: =-200
+      - txtTitleQU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#1B1B1B")
+            FontWeight: =FontWeight.Semibold
+            Height: =36
+            Size: =24
+            Text: ="Exception queue"
+            Width: =320
+            X: =32
+            Y: =126
+      - btnClearClusterQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =30
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =UpdateContext({locClusterId: Blank(), locPage: 1}); Select(btnDoLoadQueue)
+            Text: ="Clear cluster filter"
+            Visible: =!IsBlank(locClusterId)
+            Width: =200
+            X: =370
+            Y: =130
+      - txtLblDomainQU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =22
+            Size: =12
+            Text: ="Domain"
+            Width: =180
+            X: =32
+            Y: =172
+      - drpDomainQU:
+          Control: DropDown@0.0.45
+          Properties:
+            Height: =36
+            Items: =ShowColumns(colFDomain, "Label")
+            OnChange: |
+              =UpdateContext({locDomain: LookUp(colFDomain, Label = drpDomainQU.Selected.Label, Code)})
+            Width: =180
+            X: =32
+            Y: =194
+      - txtLblStatusQU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =22
+            Size: =12
+            Text: ="Status"
+            Width: =160
+            X: =224
+            Y: =172
+      - drpStatusQU:
+          Control: DropDown@0.0.45
+          Properties:
+            Height: =36
+            Items: =ShowColumns(colFStatus, "Label")
+            OnChange: |
+              =UpdateContext({locStatus: LookUp(colFStatus, Label = drpStatusQU.Selected.Label, Code)})
+            Width: =160
+            X: =224
+            Y: =194
+      - txtLblSeverityQU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =22
+            Size: =12
+            Text: ="Severity"
+            Width: =160
+            X: =396
+            Y: =172
+      - drpSeverityQU:
+          Control: DropDown@0.0.45
+          Properties:
+            Height: =36
+            Items: =ShowColumns(colFSeverity, "Label")
+            OnChange: |
+              =UpdateContext({locSeverity: LookUp(colFSeverity, Label = drpSeverityQU.Selected.Label, Code)})
+            Width: =160
+            X: =396
+            Y: =194
+      - txtLblSourceQU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =22
+            Size: =12
+            Text: ="Source"
+            Width: =160
+            X: =568
+            Y: =172
+      - drpSourceQU:
+          Control: DropDown@0.0.45
+          Properties:
+            Height: =36
+            Items: =ShowColumns(colFSource, "Label")
+            OnChange: |
+              =UpdateContext({locSource: LookUp(colFSource, Label = drpSourceQU.Selected.Label, Code)})
+            Width: =160
+            X: =568
+            Y: =194
+      - txtLblAssigneeQU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =22
+            Size: =12
+            Text: ="Assignee"
+            Width: =170
+            X: =740
+            Y: =172
+      - drpAssigneeQU:
+          Control: DropDown@0.0.45
+          Properties:
+            Height: =36
+            Items: =ShowColumns(colFAssignee, "Label")
+            OnChange: |
+              =UpdateContext({locAssignee: LookUp(colFAssignee, Label = drpAssigneeQU.Selected.Label, Code)})
+            Width: =170
+            X: =740
+            Y: =194
+      - btnOverdueQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =If(locOverdue, ColorValue("#FFFFFF"), ColorValue("#1B1B1B"))
+            Fill: =If(locOverdue, ColorValue("#0F6CBD"), ColorValue("#FFFFFF"))
+            Height: =36
+            OnSelect: |
+              =UpdateContext({locOverdue: !locOverdue})
+            Text: |
+              =If(locOverdue, "Overdue only: ON", "Overdue only: off")
+            Width: =190
+            X: =922
+            Y: =194
+      - txtLblSearchQU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =22
+            Size: =12
+            Text: ="Search business key or object"
+            Width: =400
+            X: =32
+            Y: =242
+      - txtSearchQU:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Height: =36
+            HintText: ="e.g. INV-2026-0041"
+            OnChange: |
+              =UpdateContext({locSearch: txtSearchQU.Text})
+            Width: =560
+            X: =32
+            Y: =264
+      - btnApplyQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            Color: =ColorValue("#FFFFFF")
+            Fill: =ColorValue("#0F6CBD")
+            Height: =36
+            HoverFill: =ColorValue("#0C5A9E")
+            OnSelect: |
+              =UpdateContext({locPage: 1}); Select(btnDoLoadQueue)
+            Text: ="Apply"
+            Width: =120
+            X: =608
+            Y: =264
+      - btnClearQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =Reset(txtSearchQU);
+              UpdateContext(
+                  {
+                      locDomain: "",
+                      locStatus: "OPEN",
+                      locSeverity: "",
+                      locSource: "",
+                      locAssignee: "",
+                      locOverdue: false,
+                      locSearch: "",
+                      locClusterId: Blank(),
+                      locPage: 1
+                  }
+              );
+              Select(btnDoLoadQueue)
+            Text: ="Clear"
+            Width: =110
+            X: =740
+            Y: =264
+      - txtShowingQU:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Right
+            Color: =ColorValue("#5A6570")
+            Height: =36
+            Text: |
+              =If(
+                  Coalesce(locTotal, 0) = 0,
+                  "No matching exceptions",
+                  "Showing " & Text((locPage - 1) * Coalesce(gblCfg.PageSize, 50) + 1) &
+                  " to " & Text(Min(locPage * Coalesce(gblCfg.PageSize, 50), locTotal)) &
+                  " of " & Text(locTotal, "[$-en-GB]#,##0")
+              )
+            Width: =368
+            X: =Parent.Width - 400
+            Y: =264
+      - grpGridHeadQU:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Height: =40
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =318
+      - txtHQSev:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            FontWeight: =FontWeight.Semibold
+            Text: ="Severity"
+            Width: =110
+            X: =88
+            Y: =318
+      - txtHQRule:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            FontWeight: =FontWeight.Semibold
+            Text: ="Rule"
+            Width: =300
+            X: =212
+            Y: =318
+      - txtHQRec:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            FontWeight: =FontWeight.Semibold
+            Text: ="Record"
+            Width: =250
+            X: =522
+            Y: =318
+      - txtHQProb:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            FontWeight: =FontWeight.Semibold
+            Text: ="Problem"
+            Width: =330
+            X: =782
+            Y: =318
+      - txtHQAge:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            FontWeight: =FontWeight.Semibold
+            Text: ="Age"
+            Width: =90
+            X: =Parent.Width - 250
+            Y: =318
+      - txtHQAsg:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            FontWeight: =FontWeight.Semibold
+            Text: ="Assigned to"
+            Width: =220
+            X: =Parent.Width - 150
+            Y: =318
+      - galQueueQU:
+          Control: Gallery@2.15.0
+          Variant: Vertical
+          Properties:
+            Height: =Parent.Height - 448
+            Items: =colQueue
+            TemplateSize: =48
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =358
+          Children:
+            - btnRowSelect:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderColor: =ColorValue("#0F6CBD")
+                  BorderThickness: =1
+                  Color: =ColorValue("#1B1B1B")
+                  Fill: =ColorValue("#FFFFFF")
+                  Height: =36
+                  HoverFill: =ColorValue("#EAF3FB")
+                  OnSelect: |
+                    =If(
+                        CountRows(Filter(colQueueSelected, ExceptionId = ThisItem.ExceptionId)) > 0,
+                        RemoveIf(colQueueSelected, ExceptionId = ThisItem.ExceptionId),
+                        If(
+                            CountRows(colQueueSelected) >= Coalesce(gblCfg.BulkCap, 500),
+                            Notify("Select at most " & Coalesce(gblCfg.BulkCap, 500) & " at a time.", NotificationType.Warning),
+                            Collect(colQueueSelected, {ExceptionId: ThisItem.ExceptionId})
+                        )
+                    )
+                  Text: |
+                    =If(CountRows(Filter(colQueueSelected, ExceptionId = ThisItem.ExceptionId)) > 0, "[x]", "[ ]")
+                  Tooltip: ="Select this exception"
+                  Width: =44
+                  X: =4
+                  Y: =6
+            - grpRowSeverity:
+                Control: GroupContainer@1.5.0
+                Variant: ManualLayout
+                Properties:
+                  Fill: |
+                    =Switch(
+                        Upper(ThisItem.SeverityCode),
+                        "CRITICAL", ColorValue("#FBD3D9"),
+                        "HIGH", ColorValue("#FCE8A6"),
+                        "MEDIUM", ColorValue("#D3E6F8"),
+                        ColorValue("#E4E9EF")
+                    )
+                  Height: =28
+                  Width: =110
+                  X: =56
+                  Y: =10
+            - txtRowSeverity:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =Align.Center
+                  FontWeight: =FontWeight.Bold
+                  Height: =28
+                  Size: =12
+                  Text: =Coalesce(LookUp(colLkSeverity, Code = ThisItem.SeverityCode, Label), ThisItem.SeverityCode)
+                  Width: =110
+                  X: =56
+                  Y: =10
+            - txtRowRule:
+                Control: Label@2.5.1
+                Properties:
+                  Height: =48
+                  Text: =ThisItem.RuleName
+                  Width: =300
+                  X: =180
+            - txtRowRecord:
+                Control: Label@2.5.1
+                Properties:
+                  Height: =48
+                  Text: =ThisItem.BusinessKey
+                  Width: =250
+                  X: =490
+            - txtRowProblem:
+                Control: Label@2.5.1
+                Properties:
+                  Height: =48
+                  Text: |
+                    =If(
+                        IsBlank(ThisItem.FailingColumn),
+                        ThisItem.ExpectedCondition,
+                        ThisItem.FailingColumn & ": " & ThisItem.ExpectedCondition
+                    )
+                  Width: =330
+                  X: =750
+            - txtRowAge:
+                Control: Label@2.5.1
+                Properties:
+                  FontWeight: =If(ThisItem.IsOverdue, FontWeight.Semibold, FontWeight.Normal)
+                  Height: =48
+                  Text: =Text(ThisItem.AgeDays) & " d" & If(ThisItem.IsOverdue, " !", "")
+                  Width: =90
+                  X: =Parent.Width - 282
+            - txtRowAssigned:
+                Control: Label@2.5.1
+                Properties:
+                  Height: =48
+                  Text: |
+                    =If(
+                        IsBlank(ThisItem.AssignedToUpn),
+                        "Unassigned",
+                        If(ThisItem.AssignedToUpn = gblActorUpn, "You", ThisItem.AssignedToUpn)
+                    )
+                  Width: =220
+                  X: =Parent.Width - 182
+            - btnRowOpen:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderThickness: =0
+                  Fill: =RGBA(0, 0, 0, 0)
+                  Height: =48
+                  HoverFill: =RGBA(15, 108, 189, 0.08)
+                  OnSelect: |
+                    =Navigate(
+                        scrExceptionDetail,
+                        ScreenTransition.None,
+                        {
+                            locExceptionId: ThisItem.ExceptionId,
+                            locBackAssignee: locAssignee,
+                            locBackSeverity: locSeverity,
+                            locBackOverdue: locOverdue,
+                            locBackCluster: locClusterId
+                        }
+                    )
+                  Text: =""
+                  Tooltip: =ThisItem.SeverityCode & " " & ThisItem.RuleName & " on " & ThisItem.BusinessKey
+                  Width: =Parent.TemplateWidth - 176
+                  X: =176
+      - txtEmptyQU:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Center
+            Color: =ColorValue("#5A6570")
+            Size: =14
+            Text: ="Nothing matches these filters. Try widening the status or severity."
+            Visible: =!gblBusy && CountRows(colQueue) = 0
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =400
+      - txtSelectedQU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Text: =Text(CountRows(colQueueSelected)) & " selected"
+            Width: =180
+            X: =32
+            Y: =Parent.Height - 72
+      - btnBulkQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            DisplayMode: |
+              =If(
+                  CountRows(colQueueSelected) = 0
+                      || CountRows(colQueueSelected) > Coalesce(gblCfg.BulkCap, 500)
+                      || !gblIsSteward,
+                  DisplayMode.Disabled,
+                  DisplayMode.Edit
+              )
+            Fill: =ColorValue("#FFFFFF")
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =UpdateContext({locBulkOpen: true, locBulkStatus: ""})
+            Text: ="Bulk disposition"
+            Width: =180
+            X: =220
+            Y: =Parent.Height - 72
+      - btnSuppressQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrSuppression, ScreenTransition.None)
+            Text: ="Request a suppression"
+            Tooltip: ="Ask an approver to quieten a known, accepted pattern"
+            Visible: =gblIsSteward
+            Width: =210
+            X: =420
+            Y: =Parent.Height - 72
+      - txtPageQU:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Right
+            Color: =ColorValue("#5A6570")
+            Text: ="Page " & Text(Coalesce(locPage, 1)) & " of " & Text(Max(RoundUp(locTotal / Coalesce(gblCfg.PageSize, 50), 0), 1))
+            Width: =200
+            X: =Parent.Width - 400
+            Y: =Parent.Height - 72
+      - btnPrevQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            DisplayMode: =If(locPage <= 1, DisplayMode.Disabled, DisplayMode.Edit)
+            Fill: =ColorValue("#FFFFFF")
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =UpdateContext({locPage: locPage - 1}); Select(btnDoLoadQueue)
+            Text: ="Previous"
+            Width: =74
+            X: =Parent.Width - 190
+            Y: =Parent.Height - 72
+      - btnNextQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            DisplayMode: =If(locPage * Coalesce(gblCfg.PageSize, 50) >= locTotal, DisplayMode.Disabled, DisplayMode.Edit)
+            Fill: =ColorValue("#FFFFFF")
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =UpdateContext({locPage: locPage + 1}); Select(btnDoLoadQueue)
+            Text: ="Next"
+            Width: =74
+            X: =Parent.Width - 108
+            Y: =Parent.Height - 72
+      - grpBulkScrimQU:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(0, 0, 0, 0.35)
+            Height: =Parent.Height
+            Visible: =locBulkOpen
+            Width: =Parent.Width
+      - grpBulkCardQU:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#FFFFFF")
+            Height: =360
+            Visible: =locBulkOpen
+            Width: =720
+            X: =(Parent.Width - 720) / 2
+            Y: =160
+      - txtBulkTitleQU:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Height: =34
+            Size: =18
+            Text: ="Apply one decision to " & Text(CountRows(colQueueSelected)) & " exceptions"
+            Visible: =locBulkOpen
+            Width: =grpBulkCardQU.Width - 56
+            X: =grpBulkCardQU.X + 28
+            Y: =grpBulkCardQU.Y + 24
+      - txtBulkHintQU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Text: ="One reason is recorded against every one of these exceptions, individually. It cannot be edited later."
+            Visible: =locBulkOpen
+            Width: =grpBulkCardQU.Width - 56
+            X: =grpBulkCardQU.X + 28
+            Y: =grpBulkCardQU.Y + 64
+      - drpBulkStatusQU:
+          Control: DropDown@0.0.45
+          Properties:
+            Height: =36
+            Items: =ShowColumns(colLkStatus, "Label")
+            OnChange: |
+              =UpdateContext({locBulkStatus: LookUp(colLkStatus, Label = drpBulkStatusQU.Selected.Label, Code)})
+            Visible: =locBulkOpen
+            Width: =300
+            X: =grpBulkCardQU.X + 28
+            Y: =grpBulkCardQU.Y + 116
+      - txtBulkReasonQU:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Height: =90
+            HintText: ="Say what you checked and what you concluded."
+            Visible: =locBulkOpen
+            Width: =grpBulkCardQU.Width - 56
+            X: =grpBulkCardQU.X + 28
+            Y: =grpBulkCardQU.Y + 168
+      - btnBulkCancelQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =38
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =UpdateContext({locBulkOpen: false})
+            Text: ="Cancel"
+            Visible: =locBulkOpen
+            Width: =130
+            X: =grpBulkCardQU.X + grpBulkCardQU.Width - 300
+            Y: =grpBulkCardQU.Y + grpBulkCardQU.Height - 60
+      - btnBulkApplyQU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            Color: =ColorValue("#FFFFFF")
+            DisplayMode: |
+              =If(
+                  IsBlank(locBulkStatus) || Len(Trim(txtBulkReasonQU.Text)) < Coalesce(gblCfg.ReasonMin, 10),
+                  DisplayMode.Disabled,
+                  DisplayMode.Edit
+              )
+            Fill: =ColorValue("#0F6CBD")
+            Height: =38
+            HoverFill: =ColorValue("#0C5A9E")
+            OnSelect: |
+              =Set(gblBusy, true);
+              Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+              IfError(
+                  Set(
+                      gblBulkResult,
+                      db_dq_sandbox.dquspBulkDisposition(
+                          {
+                              ActorUpn: gblActorUpn,
+                              ExceptionIdCsv: Concat(colQueueSelected, Text(ExceptionId), ","),
+                              ToStatusCode: locBulkStatus,
+                              Reason: Trim(txtBulkReasonQU.Text)
+                          }
+                      )
+                  ),
+                  Set(gblError, {IsVisible: true, Title: "Bulk disposition failed", Detail: FirstError.Message})
+              );
+              ClearCollect(colBulkFailures, gblBulkResult.ResultSets.Table2);
+              UpdateContext({locBulkOpen: false});
+              Notify(
+                  Text(Coalesce(First(gblBulkResult.ResultSets.Table1).SucceededCount, 0)) & " updated, " &
+                  Text(Coalesce(First(gblBulkResult.ResultSets.Table1).FailedCount, 0)) & " failed.",
+                  If(
+                      Coalesce(First(gblBulkResult.ResultSets.Table1).FailedCount, 0) > 0,
+                      NotificationType.Warning,
+                      NotificationType.Success
+                  ),
+                  6000
+              );
+              Set(gblBusy, false);
+              Select(btnDoLoadQueue)
+            Text: ="Apply"
+            Visible: =locBulkOpen
+            Width: =130
+            X: =grpBulkCardQU.X + grpBulkCardQU.Width - 158
+            Y: =grpBulkCardQU.Y + grpBulkCardQU.Height - 60
+      - txtErrorQU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#B3261E")
+            Fill: =ColorValue("#FDE7EA")
+            Height: =42
+            Text: =gblError.Title & " — " & gblError.Detail
+            Visible: =gblError.IsVisible
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =Parent.Height - 46

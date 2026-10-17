@@ -1,0 +1,366 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrApprovals:
+    Properties:
+      Fill: =ColorValue("#FFFFFF")
+      OnVisible: |
+        =Set(gblBusy, true);
+        Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+        Select(btnDoLoadApprovals);
+        Set(gblBusy, false)
+    Children:
+      - grpHeaderAP:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#0F6CBD")
+            Height: =64
+            Width: =Parent.Width
+      - txtBrandAP:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#FFFFFF")
+            FontWeight: =FontWeight.Semibold
+            Height: =64
+            Size: =20
+            Text: ="Data Trust"
+            Width: =260
+            X: =32
+      - grpNavAP:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Height: =48
+            Width: =Parent.Width
+            Y: =64
+      - btnNavWorkAP:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrMyWork, ScreenTransition.None)
+            Text: ="My work"
+            Width: =104
+            X: =24
+            Y: =70
+      - btnNavQueueAP:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =Navigate(
+                  scrQueue,
+                  ScreenTransition.None,
+                  {locInAssignee: "", locInSeverity: "", locInOverdue: false, locInCluster: Blank()}
+              )
+            Text: ="Queue"
+            Width: =88
+            X: =136
+            Y: =70
+      - btnNavClustersAP:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrClusters, ScreenTransition.None)
+            Text: ="Clusters"
+            Width: =96
+            X: =232
+            Y: =70
+      - btnNavApprovalsAP:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            Color: =ColorValue("#FFFFFF")
+            Fill: =ColorValue("#0F6CBD")
+            Height: =36
+            HoverFill: =ColorValue("#0C5A9E")
+            Text: ="Approvals"
+            Width: =110
+            X: =336
+            Y: =70
+      - btnNavRulesAP:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrRules, ScreenTransition.None)
+            Text: ="Rules"
+            Visible: =gblIsAdmin
+            Width: =80
+            X: =454
+            Y: =70
+      - btnDoLoadApprovals:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Height: =1
+            OnSelect: |
+              =IfError(
+                  ClearCollect(
+                      colApprovals,
+                      Filter(
+                      // Table2 carries the request rows. Table1 is a summary set, not the data.
+                      db_dq_sandbox.dquspGetPendingApprovals(
+                          {ActorUpn: gblActorUpn, ApprovalType: Blank()}
+                      ).ResultSets.Table2,
+                          !IsBlank(ApprovalId)
+                      )
+                  ),
+                  Set(gblError, {IsVisible: true, Title: "Could not load approvals", Detail: FirstError.Message})
+              )
+            Text: ="load"
+            Visible: =false
+            Width: =1
+            X: =-200
+            Y: =-200
+      - txtTitleAP:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#1B1B1B")
+            FontWeight: =FontWeight.Semibold
+            Size: =24
+            Text: ="Waiting for you"
+            Width: =360
+            X: =32
+            Y: =128
+      - txtApproverPillAP:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#0F6CBD")
+            FontWeight: =FontWeight.Semibold
+            Height: =28
+            Text: ="Approver"
+            Width: =140
+            X: =380
+            Y: =136
+      - galApprovalsAP:
+          Control: Gallery@2.15.0
+          Variant: Vertical
+          Properties:
+            Height: =Parent.Height - 204
+            Items: =colApprovals
+            TemplatePadding: =12
+            TemplateSize: =212
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =184
+          Children:
+            - grpAppCard:
+                Control: GroupContainer@1.5.0
+                Variant: ManualLayout
+                Properties:
+                  Fill: =ColorValue("#EEF3F8")
+                  Width: =Parent.TemplateWidth
+            - txtAppType:
+                Control: Label@2.5.1
+                Properties:
+                  FontWeight: =FontWeight.Bold
+                  Height: =28
+                  Text: =If(Upper(ThisItem.ApprovalType) = "SUPPRESSION", "Suppression", "Mapping")
+                  X: =24
+                  Y: =22
+            - txtAppTitle:
+                Control: Label@2.5.1
+                Properties:
+                  FontWeight: =FontWeight.Semibold
+                  Height: =34
+                  Size: =16
+                  Text: =ThisItem.Title
+                  Width: =Parent.TemplateWidth - 600
+                  X: =190
+                  Y: =18
+            - txtAppScope:
+                Control: Label@2.5.1
+                Properties:
+                  Height: =26
+                  Text: |
+                    =Coalesce(ThisItem.ProposedValue, "") &
+                     If(IsBlank(ThisItem.ExpiresAt), "", ", expires " & Text(ThisItem.ExpiresAt, "d mmmm yyyy"))
+                  Width: =Parent.TemplateWidth - 600
+                  X: =24
+                  Y: =62
+            - txtAppImpact:
+                Control: Label@2.5.1
+                Properties:
+                  FontWeight: =FontWeight.Semibold
+                  Height: =26
+                  Text: =Coalesce(ThisItem.DetailJson, "Impact not supplied by the platform.")
+                  Width: =Parent.TemplateWidth - 600
+                  X: =24
+                  Y: =90
+            - txtAppRequester:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =ColorValue("#5A6570")
+                  Height: =24
+                  Text: ="Requested by " & ThisItem.RequestedByUpn & " on " & Text(ThisItem.RequestedAt, "d mmm")
+                  Width: =Parent.TemplateWidth - 600
+                  X: =24
+                  Y: =118
+            - txtAppReason:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =ColorValue("#5A6570")
+                  Height: =44
+                  Text: |
+                    ="Reason given: " & Coalesce(ThisItem.Reason, "(none supplied)")
+                  Width: =Parent.TemplateWidth - 600
+                  X: =24
+                  Y: =144
+            - txtAppCommentLbl:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =ColorValue("#5A6570")
+                  Height: =22
+                  Size: =12
+                  Text: ="Your comment · required"
+                  Width: =300
+                  X: =Parent.TemplateWidth - 560
+                  Y: =22
+            - txtAppComment:
+                Control: Classic/TextInput@2.3.2
+                Properties:
+                  Height: =120
+                  HintText: ="Why are you approving or rejecting this?"
+                  Width: =300
+                  X: =Parent.TemplateWidth - 560
+                  Y: =46
+            - btnAppApprove:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderColor: =ColorValue("#0F6CBD")
+                  Color: =ColorValue("#FFFFFF")
+                  DisplayMode: =If(Len(Trim(txtAppComment.Text)) < 3, DisplayMode.Disabled, DisplayMode.Edit)
+                  Fill: =ColorValue("#0F6CBD")
+                  Height: =38
+                  HoverFill: =ColorValue("#0C5A9E")
+                  OnSelect: |
+                    =Set(gblBusy, true);
+                    Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+                    IfError(
+                        Set(
+                            gblWriteResult,
+                            First(
+                                db_dq_sandbox.dquspApproveSuppression(
+                                    {
+                                        ActorUpn: gblActorUpn,
+                                        SuppressionId: ThisItem.ApprovalId,
+                                        Approve: true,
+                                        Comment: Trim(txtAppComment.Text)
+                                    }
+                                ).ResultSets.Table1
+                            )
+                        ),
+                        Set(gblError, {IsVisible: true, Title: "The approval was not recorded", Detail: FirstError.Message})
+                    );
+                    If(
+                        Upper(Coalesce(gblWriteResult.Outcome, "")) = "OK",
+                        Notify("Approved.", NotificationType.Success, 3000);
+                        RemoveIf(colApprovals, ApprovalId = ThisItem.ApprovalId),
+                        Notify(Coalesce(gblWriteResult.Message, "The approval was not recorded."), NotificationType.Error, 6000)
+                    );
+                    Set(gblBusy, false)
+                  Text: ="Approve"
+                  Visible: =Upper(ThisItem.ApprovalType) = "SUPPRESSION"
+                  Width: =100
+                  X: =Parent.TemplateWidth - 240
+                  Y: =46
+            - btnAppReject:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderColor: =ColorValue("#0F6CBD")
+                  BorderThickness: =1
+                  Color: =ColorValue("#1B1B1B")
+                  DisplayMode: =If(Len(Trim(txtAppComment.Text)) < 3, DisplayMode.Disabled, DisplayMode.Edit)
+                  Fill: =ColorValue("#FFFFFF")
+                  Height: =38
+                  HoverFill: =ColorValue("#EAF3FB")
+                  OnSelect: |
+                    =Set(gblBusy, true);
+                    Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+                    IfError(
+                        Set(
+                            gblWriteResult,
+                            First(
+                                db_dq_sandbox.dquspApproveSuppression(
+                                    {
+                                        ActorUpn: gblActorUpn,
+                                        SuppressionId: ThisItem.ApprovalId,
+                                        Approve: false,
+                                        Comment: Trim(txtAppComment.Text)
+                                    }
+                                ).ResultSets.Table1
+                            )
+                        ),
+                        Set(gblError, {IsVisible: true, Title: "The rejection was not recorded", Detail: FirstError.Message})
+                    );
+                    If(
+                        Upper(Coalesce(gblWriteResult.Outcome, "")) = "OK",
+                        Notify("Rejected.", NotificationType.Success, 3000);
+                        RemoveIf(colApprovals, ApprovalId = ThisItem.ApprovalId),
+                        Notify(Coalesce(gblWriteResult.Message, "The rejection was not recorded."), NotificationType.Error, 6000)
+                    );
+                    Set(gblBusy, false)
+                  Text: ="Reject"
+                  Visible: =Upper(ThisItem.ApprovalType) = "SUPPRESSION"
+                  Width: =100
+                  X: =Parent.TemplateWidth - 130
+                  Y: =46
+            - txtAppMappingBlocked:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =ColorValue("#8A6100")
+                  Height: =120
+                  Size: =12
+                  Text: ="Mapping approvals cannot be actioned yet — no procedure exists. Raised with the platform team."
+                  Visible: =Upper(ThisItem.ApprovalType) <> "SUPPRESSION"
+                  Width: =210
+                  X: =Parent.TemplateWidth - 240
+                  Y: =46
+      - txtEmptyAP:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Center
+            Color: =ColorValue("#5A6570")
+            Size: =14
+            Text: ="Nothing is waiting for you."
+            Visible: =!gblBusy && CountRows(colApprovals) = 0
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =240
+      - txtErrorAP:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#B3261E")
+            Fill: =ColorValue("#FDE7EA")
+            Height: =42
+            Text: =gblError.Title & " — " & gblError.Detail
+            Visible: =gblError.IsVisible
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =Parent.Height - 46

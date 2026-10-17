@@ -1,0 +1,370 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrMyWork:
+    Properties:
+      Fill: =ColorValue("#FFFFFF")
+      OnVisible: |
+        =Set(gblBusy, true);
+        Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+        IfError(
+            Set(gblMyWork, First(db_dq_sandbox.dquspGetMyWork({ActorUpn: gblActorUpn}).ResultSets.Table1)),
+            Set(gblError, {IsVisible: true, Title: "Could not load your counts", Detail: FirstError.Message})
+        );
+        Set(gblIsAdmin, Coalesce(gblMyWork.IsAdmin, false));
+        Set(gblIsApprover, Coalesce(gblMyWork.IsApprover, false) || gblIsAdmin);
+
+        ClearCollect(
+            colTiles,
+            {
+                Seq: 1,
+                Count: Coalesce(gblMyWork.AssignedToMe, 0),
+                Caption: "exceptions assigned to you",
+                Badge: "",
+                BadgeTone: "",
+                Target: "QUEUE",
+                CtxAssignee: gblActorUpn,
+                CtxSeverity: "",
+                CtxOverdue: false
+            },
+            {
+                Seq: 2,
+                Count: Coalesce(gblMyWork.OverdueForMe, 0),
+                Caption: "of those are overdue",
+                Badge: If(Coalesce(gblMyWork.OverdueForMe, 0) > 0, "attention", ""),
+                BadgeTone: "amber",
+                Target: "QUEUE",
+                CtxAssignee: gblActorUpn,
+                CtxSeverity: "",
+                CtxOverdue: true
+            },
+            {
+                Seq: 3,
+                Count: Coalesce(gblMyWork.UnassignedCritical, 0),
+                Caption: "unassigned critical exceptions in your domains",
+                Badge: If(Coalesce(gblMyWork.UnassignedCritical, 0) > 0, "attention", ""),
+                BadgeTone: "red",
+                Target: "QUEUE",
+                CtxAssignee: "UNASSIGNED",
+                CtxSeverity: "CRITICAL",
+                CtxOverdue: false
+            },
+            {
+                Seq: 4,
+                Count: Coalesce(gblMyWork.ClustersToConfirm, 0),
+                Caption: "clusters awaiting your confirmation",
+                Badge: "",
+                BadgeTone: "",
+                Target: "CLUSTERS",
+                CtxAssignee: "",
+                CtxSeverity: "",
+                CtxOverdue: false
+            }
+        );
+        If(
+            gblIsApprover,
+            Collect(
+                colTiles,
+                {
+                    Seq: 5,
+                    Count: Coalesce(gblMyWork.ApprovalsWaiting, 0),
+                    Caption: "approval" & If(Coalesce(gblMyWork.ApprovalsWaiting, 0) = 1, "", "s") & " waiting for you",
+                    Badge: "",
+                    BadgeTone: "",
+                    Target: "APPROVALS",
+                    CtxAssignee: "",
+                    CtxSeverity: "",
+                    CtxOverdue: false
+                }
+            )
+        );
+        Set(gblBusy, false)
+    Children:
+      - grpHeaderMW:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#0F6CBD")
+            Height: =64
+            Width: =Parent.Width
+      - txtBrandMW:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#FFFFFF")
+            FontWeight: =FontWeight.Semibold
+            Height: =64
+            Size: =20
+            Text: ="Data Trust"
+            Width: =260
+            X: =32
+      - txtAvatarMW:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Center
+            Color: =ColorValue("#FFFFFF")
+            FontWeight: =FontWeight.Semibold
+            Height: =28
+            Text: =gblInitials
+            Width: =40
+            X: =Parent.Width - 80
+            Y: =18
+      - grpNavMW:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Height: =48
+            Width: =Parent.Width
+            Y: =64
+      - btnNavWorkMW:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            Color: =ColorValue("#FFFFFF")
+            Fill: =ColorValue("#0F6CBD")
+            Height: =36
+            HoverFill: =ColorValue("#0C5A9E")
+            Text: ="My work"
+            Width: =104
+            X: =24
+            Y: =70
+      - btnNavQueueMW:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =Navigate(
+                  scrQueue,
+                  ScreenTransition.None,
+                  {locInAssignee: "", locInSeverity: "", locInOverdue: false, locInCluster: Blank()}
+              )
+            Text: ="Queue"
+            Width: =88
+            X: =btnNavWorkMW.X + btnNavWorkMW.Width + 8
+            Y: =70
+      - btnNavClustersMW:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrClusters, ScreenTransition.None)
+            Text: ="Clusters"
+            Width: =96
+            X: =btnNavQueueMW.X + btnNavQueueMW.Width + 8
+            Y: =70
+      - btnNavApprovalsMW:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrApprovals, ScreenTransition.None)
+            Text: ="Approvals"
+            Visible: =gblIsApprover
+            Width: =110
+            X: =btnNavClustersMW.X + btnNavClustersMW.Width + 8
+            Y: =70
+      - btnNavRulesMW:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrRules, ScreenTransition.None)
+            Text: ="Rules"
+            Visible: =gblIsAdmin
+            Width: =80
+            X: =btnNavApprovalsMW.X + If(btnNavApprovalsMW.Visible, btnNavApprovalsMW.Width + 8, 0)
+            Y: =70
+      - txtTitleMW:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#1B1B1B")
+            FontWeight: =FontWeight.Semibold
+            Size: =24
+            Text: ="My work"
+            Width: =200
+            X: =32
+            Y: =136
+      - txtRolePillMW:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#0F6CBD")
+            FontWeight: =FontWeight.Semibold
+            Height: =28
+            Text: |
+              =Concat(Distinct(colScope, RoleCode), Result, " / ") & " · " &
+               If(
+                   CountRows(Filter(colScope, IsBlank(DomainCode))) > 0,
+                   "All domains",
+                   Concat(gblDomains, Label, ", ")
+               )
+            Width: =520
+            X: =240
+            Y: =144
+      - galTilesMW:
+          Control: Gallery@2.15.0
+          Variant: Vertical
+          Properties:
+            Height: =430
+            Items: =colTiles
+            TemplatePadding: =8
+            TemplateSize: =88
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =192
+          Children:
+            - grpTileBg:
+                Control: GroupContainer@1.5.0
+                Variant: ManualLayout
+                Properties:
+                  Fill: =ColorValue("#EEF3F8")
+                  Height: =80
+                  Width: =Parent.TemplateWidth
+            - txtTileCount:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =Align.Center
+                  Color: =ColorValue("#0F6CBD")
+                  FontWeight: =FontWeight.Bold
+                  Height: =80
+                  Size: =28
+                  Text: =Text(ThisItem.Count, "[$-en-GB]#,##0")
+                  Width: =110
+                  X: =24
+            - txtTileCaption:
+                Control: Label@2.5.1
+                Properties:
+                  Height: =80
+                  Size: =14
+                  Text: =ThisItem.Caption
+                  Width: =Parent.TemplateWidth - 460
+                  X: =150
+            - grpTileBadge:
+                Control: GroupContainer@1.5.0
+                Variant: ManualLayout
+                Properties:
+                  Fill: =If(ThisItem.BadgeTone = "red", ColorValue("#FBD3D9"), ColorValue("#FCE8A6"))
+                  Height: =28
+                  Visible: =ThisItem.Badge <> ""
+                  Width: =120
+                  X: =Parent.TemplateWidth - 250
+                  Y: =26
+            - txtTileBadge:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =Align.Center
+                  FontWeight: =FontWeight.Bold
+                  Height: =28
+                  Size: =12
+                  Text: ="attention"
+                  Visible: =ThisItem.Badge <> ""
+                  Width: =120
+                  X: =Parent.TemplateWidth - 250
+                  Y: =26
+            - btnTileHit:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderThickness: =0
+                  Fill: =RGBA(0, 0, 0, 0)
+                  Height: =80
+                  HoverFill: =RGBA(15, 108, 189, 0.08)
+                  OnSelect: |
+                    =Switch(
+                        ThisItem.Target,
+                        "QUEUE",
+                        Navigate(
+                            scrQueue,
+                            ScreenTransition.None,
+                            {
+                                locInAssignee: ThisItem.CtxAssignee,
+                                locInSeverity: ThisItem.CtxSeverity,
+                                locInOverdue: ThisItem.CtxOverdue,
+                                locInCluster: Blank()
+                            }
+                        ),
+                        "CLUSTERS",
+                        Navigate(scrClusters, ScreenTransition.None),
+                        "APPROVALS",
+                        Navigate(scrApprovals, ScreenTransition.None)
+                    )
+                  Text: =""
+                  Tooltip: |
+                    =Text(ThisItem.Count) & " " & ThisItem.Caption &
+                     If(ThisItem.Badge <> "", ", needs attention", "")
+                  Width: =Parent.TemplateWidth
+      - grpPbiMW:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Height: =92
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =galTilesMW.Y + galTilesMW.Height + 8
+      - txtPbiTitleMW:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Height: =26
+            Size: =14
+            Text: ="Looking for trends, batch health or reconciliation?"
+            Width: =700
+            X: =grpPbiMW.X + 24
+            Y: =grpPbiMW.Y + 18
+      - txtPbiBodyMW:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =24
+            Text: ="Those live in Power BI. This is for doing, not reading."
+            Width: =700
+            X: =grpPbiMW.X + 24
+            Y: =txtPbiTitleMW.Y + 28
+      - btnPbiOpenMW:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            DisplayMode: =If(IsBlank(gblMyWork.PowerBiReportUrl), DisplayMode.Disabled, DisplayMode.Edit)
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Launch(gblMyWork.PowerBiReportUrl)
+            Text: ="Open the Data Quality report"
+            Width: =240
+            X: =grpPbiMW.X + grpPbiMW.Width - 264
+            Y: =grpPbiMW.Y + 28
+      - txtErrorMW:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#B3261E")
+            Fill: =ColorValue("#FDE7EA")
+            Height: =42
+            Text: =gblError.Title & " — " & gblError.Detail
+            Visible: =gblError.IsVisible
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =Parent.Height - 46

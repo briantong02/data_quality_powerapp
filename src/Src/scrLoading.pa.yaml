@@ -1,0 +1,186 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrLoading:
+    Properties:
+      Fill: =ColorValue("#FFFFFF")
+      OnVisible: |
+        =Set(gblBootStep, "Starting");
+        Set(gblBootFailed, false);
+        Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+        Set(gblActorUpn, User().Email);
+        Set(gblCfg, {PageSize: 50, BulkCap: 500, ReasonMin: 20, SuppressionMaxDays: 365});
+        Select(btnDoBootstrap)
+    Children:
+      - btnDoBootstrap:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Height: =1
+            OnSelect: |
+              =Set(gblBootFailed, false);
+
+              // ---- 1. who am I, and what may I see ----
+              Set(gblBootStep, "Reading your access");
+              ClearCollect(colScope, Blank());
+              Clear(colScope);
+              IfError(
+                  ClearCollect(
+                      colScope,
+                      Filter(
+                      db_dq_sandbox.dquspGetMyScope({ActorUpn: gblActorUpn}).ResultSets.Table1,
+                          !IsBlank(RoleCode)
+                      )
+                  ),
+                  Set(gblBootFailed, true);
+                  Set(gblError, {IsVisible: true, Title: "Could not read your access", Detail: FirstError.Message})
+              );
+
+              // ---- 2. reference data. LookupName values are the real ones from
+              //         dq.Lookup: Severity, ExceptionStatus, Domain, SourceSystem,
+              //         StatusGroup, Role, TargetLayer, Dimension, TemporalPattern.
+              //         Each call is guarded so one bad lookup cannot halt the chain. ----
+              Set(gblBootStep, "Loading reference data");
+              IfError(
+                  ClearCollect(colLkSeverity, Filter(db_dq_sandbox.dquspGetLookup({ActorUpn: gblActorUpn, LookupName: "Severity"}).ResultSets.Table1, !IsBlank(Code))),
+                  Set(gblError, {IsVisible: true, Title: "Could not load severities", Detail: FirstError.Message})
+              );
+              IfError(
+                  ClearCollect(colLkStatus, Filter(db_dq_sandbox.dquspGetLookup({ActorUpn: gblActorUpn, LookupName: "ExceptionStatus"}).ResultSets.Table1, !IsBlank(Code))),
+                  Set(gblError, {IsVisible: true, Title: "Could not load statuses", Detail: FirstError.Message})
+              );
+              // The queue filters on StatusGroup (OPEN|RESOLVED|SUPPRESSED|ALL), which is
+              // its own lookup - NOT the per-exception ExceptionStatus list.
+              IfError(
+                  ClearCollect(colLkStatusGroup, Filter(db_dq_sandbox.dquspGetLookup({ActorUpn: gblActorUpn, LookupName: "StatusGroup"}).ResultSets.Table1, !IsBlank(Code))),
+                  Set(gblError, {IsVisible: true, Title: "Could not load status groups", Detail: FirstError.Message})
+              );
+              IfError(
+                  ClearCollect(colLkDomain, Filter(db_dq_sandbox.dquspGetLookup({ActorUpn: gblActorUpn, LookupName: "Domain"}).ResultSets.Table1, !IsBlank(Code))),
+                  Set(gblError, {IsVisible: true, Title: "Could not load domains", Detail: FirstError.Message})
+              );
+              IfError(
+                  ClearCollect(colLkSource, Filter(db_dq_sandbox.dquspGetLookup({ActorUpn: gblActorUpn, LookupName: "SourceSystem"}).ResultSets.Table1, !IsBlank(Code))),
+                  Set(gblError, {IsVisible: true, Title: "Could not load source systems", Detail: FirstError.Message})
+              );
+
+              // ---- 3. identity and domain scope ----
+              Set(gblBootStep, "Working out your scope");
+              Set(gblDisplayName, Coalesce(First(colScope).DisplayName, User().FullName, gblActorUpn));
+              Set(gblInitials, Upper(Left(Coalesce(gblDisplayName, gblActorUpn), 2)));
+              IfError(
+                  ClearCollect(
+                      gblDomains,
+                      Filter(
+                          colLkDomain As D,
+                          CountRows(Filter(colScope, IsBlank(DomainCode))) > 0
+                              || CountRows(Filter(colScope, DomainCode = D.Code)) > 0
+                      )
+                  ),
+                  Set(gblError, {IsVisible: true, Title: "Could not resolve your domains", Detail: FirstError.Message})
+              );
+
+              // ---- 4. counts and role flags ----
+              Set(gblBootStep, "Loading your work");
+              IfError(
+                  Set(gblMyWork, First(db_dq_sandbox.dquspGetMyWork({ActorUpn: gblActorUpn}).ResultSets.Table1)),
+                  Set(gblBootFailed, true);
+                  Set(gblError, {IsVisible: true, Title: "Could not load your work", Detail: FirstError.Message})
+              );
+              Set(gblIsAdmin, Coalesce(gblMyWork.IsAdmin, false));
+              Set(gblIsApprover, Coalesce(gblMyWork.IsApprover, false) || gblIsAdmin);
+              Set(gblIsSteward, CountRows(Filter(colScope, RoleCode = "STEWARD")) > 0 || gblIsApprover);
+
+              Set(gblBootStep, "Done");
+
+              // ---- 5. route. Only skipped when the two load-bearing calls failed,
+              //         and even then the user gets buttons rather than a dead screen. ----
+              If(
+                  !gblBootFailed,
+                  If(
+                      CountRows(colScope) = 0,
+                      Navigate(scrNoAccess),
+                      Navigate(scrMyWork)
+                  )
+              )
+            Text: ="bootstrap"
+            Visible: =false
+            Width: =1
+            X: =-200
+            Y: =-200
+      - grpLoadCard:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EAF3FB")
+            Height: =300
+            Width: =720
+            X: =(Parent.Width - 720) / 2
+            Y: =(Parent.Height - 300) / 2
+      - txtLoadBrand:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Center
+            Color: =ColorValue("#0F6CBD")
+            FontWeight: =FontWeight.Bold
+            Height: =46
+            Size: =28
+            Text: ="Data Trust"
+            Width: =grpLoadCard.Width
+            X: =grpLoadCard.X
+            Y: =grpLoadCard.Y + 40
+      - txtLoadStep:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Center
+            Color: =ColorValue("#5A6570")
+            Height: =30
+            Size: =15
+            Text: =Coalesce(gblBootStep, "Starting") & "..."
+            Width: =grpLoadCard.Width
+            X: =grpLoadCard.X
+            Y: =grpLoadCard.Y + 96
+      - txtLoadError:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Center
+            Height: =70
+            Text: =gblError.Title & " - " & gblError.Detail
+            Visible: =gblError.IsVisible
+            Width: =grpLoadCard.Width - 64
+            X: =grpLoadCard.X + 32
+            Y: =grpLoadCard.Y + 132
+      - btnLoadRetry:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =44
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Select(btnDoBootstrap)
+            Text: ="Try again"
+            Visible: =gblError.IsVisible
+            Width: =180
+            X: =grpLoadCard.X + 150
+            Y: =grpLoadCard.Y + 216
+      - btnLoadContinue:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            Color: =ColorValue("#FFFFFF")
+            Fill: =ColorValue("#0F6CBD")
+            Height: =44
+            HoverFill: =ColorValue("#0C5A9E")
+            OnSelect: =Navigate(scrMyWork)
+            Text: ="Continue anyway"
+            Visible: =gblError.IsVisible
+            Width: =220
+            X: =grpLoadCard.X + 350
+            Y: =grpLoadCard.Y + 216

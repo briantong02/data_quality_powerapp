@@ -1,0 +1,458 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrClusters:
+    Properties:
+      Fill: =ColorValue("#FFFFFF")
+      OnVisible: |
+        =Set(gblBusy, true);
+        Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+        UpdateContext({locClusterPage: 1, locRejectId: Blank()});
+        Select(btnDoLoadClusters);
+        Set(gblBusy, false)
+    Children:
+      - grpHeaderCL:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#0F6CBD")
+            Height: =64
+            Width: =Parent.Width
+      - txtBrandCL:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#FFFFFF")
+            FontWeight: =FontWeight.Semibold
+            Height: =64
+            Size: =20
+            Text: ="Data Trust"
+            Width: =260
+            X: =32
+      - grpNavCL:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Height: =48
+            Width: =Parent.Width
+            Y: =64
+      - btnNavWorkCL:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrMyWork, ScreenTransition.None)
+            Text: ="My work"
+            Width: =104
+            X: =24
+            Y: =70
+      - btnNavQueueCL:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =Navigate(
+                  scrQueue,
+                  ScreenTransition.None,
+                  {locInAssignee: "", locInSeverity: "", locInOverdue: false, locInCluster: Blank()}
+              )
+            Text: ="Queue"
+            Width: =88
+            X: =136
+            Y: =70
+      - btnNavClustersCL:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            Color: =ColorValue("#FFFFFF")
+            Fill: =ColorValue("#0F6CBD")
+            Height: =36
+            HoverFill: =ColorValue("#0C5A9E")
+            Text: ="Clusters"
+            Width: =96
+            X: =232
+            Y: =70
+      - btnNavApprovalsCL:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrApprovals, ScreenTransition.None)
+            Text: ="Approvals"
+            Visible: =gblIsApprover
+            Width: =110
+            X: =336
+            Y: =70
+      - btnNavRulesCL:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrRules, ScreenTransition.None)
+            Text: ="Rules"
+            Visible: =gblIsAdmin
+            Width: =80
+            X: =454
+            Y: =70
+      - btnDoLoadClusters:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Height: =1
+            OnSelect: |
+              =IfError(
+                  ClearCollect(
+                      colClusters,
+                      Filter(
+                      db_dq_sandbox.dquspGetClusterList(
+                          {
+                              ActorUpn: gblActorUpn,
+                              DomainCode: Blank(),
+                              StatusGroup: "OPEN",
+                              Page: locClusterPage,
+                              PageSize: 25
+                          }
+                      ).ResultSets.Table1,
+                          !IsBlank(ClusterId)
+                      )
+                  ),
+                  Set(gblError, {IsVisible: true, Title: "Could not load clusters", Detail: FirstError.Message})
+              )
+            Text: ="load"
+            Visible: =false
+            Width: =1
+            X: =-200
+            Y: =-200
+      - txtTitleCL:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#1B1B1B")
+            FontWeight: =FontWeight.Semibold
+            Size: =24
+            Text: ="Clusters"
+            Width: =300
+            X: =32
+            Y: =128
+      - txtSummaryCL:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Right
+            Color: =ColorValue("#5A6570")
+            Height: =28
+            Text: =Text(Coalesce(First(colClusters).TotalCount, 0), "[$-en-GB]#,##0") & " open clusters"
+            Width: =400
+            X: =Parent.Width - 432
+            Y: =136
+      - galClustersCL:
+          Control: Gallery@2.15.0
+          Variant: Vertical
+          Properties:
+            Height: =Parent.Height - 200
+            Items: =colClusters
+            TemplatePadding: =12
+            TemplateSize: =172
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =180
+          Children:
+            - grpCardCL:
+                Control: GroupContainer@1.5.0
+                Variant: ManualLayout
+                Properties:
+                  Fill: =ColorValue("#EEF3F8")
+                  Height: =160
+                  Width: =Parent.TemplateWidth
+            - txtCardCount:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =Align.Center
+                  Color: =ColorValue("#0F6CBD")
+                  FontWeight: =FontWeight.Bold
+                  Height: =44
+                  Size: =28
+                  Text: =Text(ThisItem.ExceptionCount, "[$-en-GB]#,##0")
+                  Width: =160
+                  X: =24
+                  Y: =28
+            - txtCardRecordsWord:
+                Control: Label@2.5.1
+                Properties:
+                  Align: =Align.Center
+                  Color: =ColorValue("#5A6570")
+                  Height: =22
+                  Size: =12
+                  Text: ="records"
+                  Width: =160
+                  X: =24
+                  Y: =72
+            - txtCardLabel:
+                Control: Label@2.5.1
+                Properties:
+                  FontWeight: =FontWeight.Semibold
+                  Height: =52
+                  Size: =16
+                  Text: =ThisItem.ClusterLabel
+                  Width: =Parent.TemplateWidth - 640
+                  X: =200
+                  Y: =24
+            - txtCardPattern:
+                Control: Label@2.5.1
+                Properties:
+                  FontWeight: =FontWeight.Bold
+                  Height: =26
+                  Size: =12
+                  Text: |
+                    =Switch(
+                        Upper(Coalesce(ThisItem.TemporalPattern, "")),
+                        "NEW_THIS_BATCH", "New this batch",
+                        "PERSISTENT", "Persistent",
+                        "RECURRING", "Recurring",
+                        ThisItem.TemporalPattern
+                    )
+                  Visible: =!IsBlank(ThisItem.TemporalPattern)
+                  Width: =200
+                  X: =200
+                  Y: =80
+            - txtCardSuggested:
+                Control: Label@2.5.1
+                Properties:
+                  Color: =ColorValue("#5A6570")
+                  Text: |
+                    ="Suggested: " & Coalesce(ThisItem.SuggestedRootCause, "no cause proposed")
+                  Width: =Parent.TemplateWidth - 640
+                  X: =200
+                  Y: =112
+            - btnCardConfirm:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderColor: =ColorValue("#0F6CBD")
+                  Color: =ColorValue("#FFFFFF")
+                  Fill: =ColorValue("#0F6CBD")
+                  Height: =38
+                  HoverFill: =ColorValue("#0C5A9E")
+                  OnSelect: |
+                    =Set(gblBusy, true);
+                    Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+                    IfError(
+                        Set(
+                            gblWriteResult,
+                            First(
+                                db_dq_sandbox.dquspConfirmCluster(
+                                    {
+                                        ActorUpn: gblActorUpn,
+                                        ClusterId: ThisItem.ClusterId,
+                                        Confirm: true,
+                                        Comment: ""
+                                    }
+                                ).ResultSets.Table1
+                            )
+                        ),
+                        Set(gblError, {IsVisible: true, Title: "Could not confirm the cluster", Detail: FirstError.Message})
+                    );
+                    If(
+                        Upper(Coalesce(gblWriteResult.Outcome, "")) = "OK",
+                        Notify("Grouping confirmed. No exception has been disposed of.", NotificationType.Success, 4000),
+                        Notify(Coalesce(gblWriteResult.Message, "The cluster was not confirmed."), NotificationType.Error, 6000)
+                    );
+                    Set(gblBusy, false);
+                    Select(btnDoLoadClusters)
+                  Text: ="Confirm"
+                  Visible: =gblIsSteward
+                  Width: =180
+                  X: =Parent.TemplateWidth - 420
+                  Y: =28
+            - btnCardNotValid:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderColor: =ColorValue("#0F6CBD")
+                  BorderThickness: =1
+                  Color: =ColorValue("#1B1B1B")
+                  Fill: =ColorValue("#FFFFFF")
+                  Height: =38
+                  HoverFill: =ColorValue("#EAF3FB")
+                  OnSelect: |
+                    =UpdateContext({locRejectId: ThisItem.ClusterId})
+                  Text: ="Not valid"
+                  Visible: =gblIsSteward
+                  Width: =150
+                  X: =Parent.TemplateWidth - 228
+                  Y: =28
+            - btnCardViewRecords:
+                Control: Classic/Button@2.2.0
+                Properties:
+                  BorderColor: =ColorValue("#0F6CBD")
+                  BorderThickness: =1
+                  Color: =ColorValue("#1B1B1B")
+                  Fill: =ColorValue("#FFFFFF")
+                  Height: =38
+                  HoverFill: =ColorValue("#EAF3FB")
+                  OnSelect: |
+                    =Navigate(
+                        scrQueue,
+                        ScreenTransition.None,
+                        {
+                            locInAssignee: "",
+                            locInSeverity: "",
+                            locInOverdue: false,
+                            locInCluster: ThisItem.ClusterId
+                        }
+                    )
+                  Text: |
+                    =If(
+                        ThisItem.ExceptionCount <= 9999,
+                        "View the " & Text(ThisItem.ExceptionCount, "[$-en-GB]#,##0") & " records",
+                        "View the records"
+                    )
+                  Width: =342
+                  X: =Parent.TemplateWidth - 420
+                  Y: =78
+      - txtEmptyCL:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Center
+            Color: =ColorValue("#5A6570")
+            Size: =14
+            Text: ="No clusters awaiting confirmation. The platform groups exceptions overnight."
+            Visible: =!gblBusy && CountRows(colClusters) = 0
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =240
+      - grpRejectScrimCL:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(0, 0, 0, 0.35)
+            Height: =Parent.Height
+            Visible: =!IsBlank(locRejectId)
+            Width: =Parent.Width
+      - grpRejectCardCL:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#FFFFFF")
+            Height: =300
+            Visible: =!IsBlank(locRejectId)
+            Width: =660
+            X: =(Parent.Width - 660) / 2
+            Y: =200
+      - txtRejectTitleCL:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Height: =34
+            Size: =18
+            Text: ="Why does this grouping not hold together?"
+            Visible: =!IsBlank(locRejectId)
+            Width: =grpRejectCardCL.Width - 56
+            X: =grpRejectCardCL.X + 28
+            Y: =grpRejectCardCL.Y + 26
+      - txtRejectHintCL:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =24
+            Text: ="That feedback improves the grouping and is genuinely useful."
+            Visible: =!IsBlank(locRejectId)
+            Width: =grpRejectCardCL.Width - 56
+            X: =grpRejectCardCL.X + 28
+            Y: =grpRejectCardCL.Y + 64
+      - txtRejectReasonCL:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Height: =110
+            HintText: ="What does not hold together?"
+            Visible: =!IsBlank(locRejectId)
+            Width: =grpRejectCardCL.Width - 56
+            X: =grpRejectCardCL.X + 28
+            Y: =grpRejectCardCL.Y + 98
+      - btnRejectCancelCL:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =38
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =UpdateContext({locRejectId: Blank()})
+            Text: ="Cancel"
+            Visible: =!IsBlank(locRejectId)
+            Width: =130
+            X: =grpRejectCardCL.X + grpRejectCardCL.Width - 300
+            Y: =grpRejectCardCL.Y + grpRejectCardCL.Height - 60
+      - btnRejectConfirmCL:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            Color: =ColorValue("#FFFFFF")
+            DisplayMode: =If(Len(Trim(txtRejectReasonCL.Text)) < Coalesce(gblCfg.ReasonMin, 10), DisplayMode.Disabled, DisplayMode.Edit)
+            Fill: =ColorValue("#0F6CBD")
+            Height: =38
+            HoverFill: =ColorValue("#0C5A9E")
+            OnSelect: |
+              =Set(gblBusy, true);
+              Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+              IfError(
+                  Set(
+                      gblWriteResult,
+                      First(
+                          db_dq_sandbox.dquspConfirmCluster(
+                              {
+                                  ActorUpn: gblActorUpn,
+                                  ClusterId: locRejectId,
+                                  Confirm: false,
+                                  Comment: Trim(txtRejectReasonCL.Text)
+                              }
+                          ).ResultSets.Table1
+                      )
+                  ),
+                  Set(gblError, {IsVisible: true, Title: "Could not reject the cluster", Detail: FirstError.Message})
+              );
+              If(
+                  Upper(Coalesce(gblWriteResult.Outcome, "")) = "OK",
+                  Notify("Grouping rejected. That feedback improves the grouping.", NotificationType.Success, 4000),
+                  Notify(Coalesce(gblWriteResult.Message, "The cluster was not rejected."), NotificationType.Error, 6000)
+              );
+              UpdateContext({locRejectId: Blank()});
+              Reset(txtRejectReasonCL);
+              Set(gblBusy, false);
+              Select(btnDoLoadClusters)
+            Text: ="Reject grouping"
+            Visible: =!IsBlank(locRejectId)
+            Width: =130
+            X: =grpRejectCardCL.X + grpRejectCardCL.Width - 158
+            Y: =grpRejectCardCL.Y + grpRejectCardCL.Height - 60
+      - txtErrorCL:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#B3261E")
+            Fill: =ColorValue("#FDE7EA")
+            Height: =42
+            Text: =gblError.Title & " — " & gblError.Detail
+            Visible: =gblError.IsVisible
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =Parent.Height - 46

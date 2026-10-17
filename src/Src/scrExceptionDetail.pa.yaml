@@ -1,0 +1,579 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrExceptionDetail:
+    Properties:
+      Fill: =ColorValue("#FFFFFF")
+      OnVisible: |
+        =Set(gblBusy, true);
+        Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+        UpdateContext({locConflict: false, locDecision: "", locRequiresReason: false});
+
+        // This screen is only meaningful with an exception id passed from the queue.
+        // Studio runs OnVisible whenever the screen is previewed, with no context
+        // variable set - calling the procedure with a null @ExceptionId then fails and,
+        // because gblError is global, the failure used to surface on EVERY screen.
+        If(
+            IsBlank(locExceptionId),
+            Clear(colActions);
+            Clear(colHistory);
+            Set(gblEx, Blank()),
+
+            IfError(
+                Set(
+                    gblExDetail,
+                    db_dq_sandbox.dquspGetExceptionDetail({ActorUpn: gblActorUpn, ExceptionId: locExceptionId})
+                ),
+                Set(gblError, {IsVisible: true, Title: "Could not open the exception", Detail: FirstError.Message})
+            );
+            Set(gblEx, First(gblExDetail.ResultSets.Table1));
+
+            // Table2 is the set of transitions available for THIS exception and THIS
+            // actor, already filtered server-side for role and for IsSystemOnly.
+            // RESOLVED_FIXED and CLOSED can therefore never appear here.
+            ClearCollect(colActions, gblExDetail.ResultSets.Table2);
+
+            IfError(
+                ClearCollect(
+                    colHistory,
+                    Filter(
+                    db_dq_sandbox.dquspGetExceptionHistory({ActorUpn: gblActorUpn, ExceptionId: locExceptionId}).ResultSets.Table1,
+                        !IsBlank(HistoryId)
+                    )
+                ),
+                Set(gblError, {IsVisible: true, Title: "Could not load history", Detail: FirstError.Message})
+            )
+        );
+        Set(gblBusy, false)
+    Children:
+      - grpHeaderED:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#0F6CBD")
+            Height: =64
+            Width: =Parent.Width
+      - txtBrandED:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#FFFFFF")
+            FontWeight: =FontWeight.Semibold
+            Height: =64
+            Size: =20
+            Text: ="Data Trust"
+            Width: =260
+            X: =32
+      - btnBackED:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =32
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =Navigate(
+                  scrQueue,
+                  ScreenTransition.None,
+                  {
+                      locInAssignee: locBackAssignee,
+                      locInSeverity: locBackSeverity,
+                      locInOverdue: locBackOverdue,
+                      locInCluster: locBackCluster
+                  }
+              )
+            Text: ="Back to the queue"
+            Width: =200
+            X: =Parent.Width - 240
+            Y: =76
+      - btnSuppressED:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =32
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Navigate(scrSuppression, ScreenTransition.None)
+            Text: ="Request a suppression"
+            Tooltip: ="Ask an approver to quieten this pattern"
+            Visible: =gblIsSteward
+            Width: =210
+            X: =Parent.Width - 470
+            Y: =76
+      - txtExTitleED:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Size: =24
+            Text: ="Exception " & Text(gblEx.ExceptionId)
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =320
+            X: =32
+            Y: =120
+      - grpExSeverityED:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: |
+              =Switch(
+                  Upper(gblEx.SeverityCode),
+                  "CRITICAL", ColorValue("#FBD3D9"),
+                  "HIGH", ColorValue("#FCE8A6"),
+                  "MEDIUM", ColorValue("#D3E6F8"),
+                  ColorValue("#E4E9EF")
+              )
+            Height: =28
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =110
+            X: =340
+            Y: =128
+      - txtExSeverityED:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Center
+            FontWeight: =FontWeight.Bold
+            Height: =28
+            Size: =12
+            Text: =Coalesce(LookUp(colLkSeverity, Code = gblEx.SeverityCode, Label), gblEx.SeverityCode)
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =110
+            X: =340
+            Y: =128
+      - txtExStatusED:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#0F6CBD")
+            FontWeight: =FontWeight.Semibold
+            Height: =28
+            Text: =Coalesce(gblEx.StatusLabel, gblEx.StatusCode)
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =180
+            X: =462
+            Y: =128
+      - txtExOccurrenceED:
+          Control: Label@2.5.1
+          Properties:
+            Align: =Align.Right
+            Color: =ColorValue("#5A6570")
+            Height: =28
+            Text: |
+              ="Seen " & Text(gblEx.OccurrenceCount) &
+               If(gblEx.OccurrenceCount = 1, " time", " times") &
+               " since " & Text(gblEx.FirstDetectedAt, "d mmmm")
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =420
+            X: =Parent.Width - 460
+            Y: =128
+      - grpWhatFailedED:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =(Parent.Width - 80) * 0.55
+            X: =32
+            Y: =176
+      - txtWfTitleED:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Height: =28
+            Size: =16
+            Text: ="What failed"
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =300
+            X: =grpWhatFailedED.X + 24
+            Y: =grpWhatFailedED.Y + 16
+      - txtWfLabelsED:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =130
+            Text: |
+              ="Rule" & Char(10) & "Record" & Char(10) & "Value found" & Char(10) & "Expected" & Char(10) & "Source"
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =120
+            X: =grpWhatFailedED.X + 24
+            Y: =grpWhatFailedED.Y + 52
+      - txtWfValuesED:
+          Control: Label@2.5.1
+          Properties:
+            Height: =130
+            Text: |
+              =gblEx.RuleDescription & Char(10) &
+               gblEx.BusinessKey & Char(10) &
+               Coalesce(gblEx.ActualValue, "(blank)") & Char(10) &
+               gblEx.ExpectedCondition & Char(10) &
+               Coalesce(LookUp(colLkSource, Code = gblEx.SourceSystem, Label), gblEx.SourceSystem)
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =grpWhatFailedED.Width - 176
+            X: =grpWhatFailedED.X + 152
+            Y: =grpWhatFailedED.Y + 52
+      - grpContextED:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =(Parent.Width - 80) * 0.45
+            X: =grpWhatFailedED.X + grpWhatFailedED.Width + 16
+            Y: =176
+      - txtCtxTitleED:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Height: =28
+            Size: =16
+            Text: ="Context"
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =300
+            X: =grpContextED.X + 24
+            Y: =grpContextED.Y + 16
+      - txtCtxJsonED:
+          Control: Label@2.5.1
+          Properties:
+            Height: =130
+            Text: =Coalesce(gblEx.ContextJson, "No additional context was captured for this record.")
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =grpContextED.Width - 48
+            X: =grpContextED.X + 24
+            Y: =grpContextED.Y + 52
+      - txtSuggestedED:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =26
+            Text: |
+              ="Suggested: " & gblEx.SuggestedRootCause
+            Visible: =!IsBlank(gblEx.SuggestedRootCause)
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =384
+      - grpDecisionED:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Height: =140
+            Visible: =gblIsSteward && CountRows(colActions) > 0
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =418
+      - txtDecisionTitleED:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Height: =28
+            Size: =16
+            Text: ="Record your decision"
+            Visible: =grpDecisionED.Visible
+            Width: =300
+            X: =grpDecisionED.X + 24
+            Y: =grpDecisionED.Y + 16
+      - drpDecisionED:
+          Control: DropDown@0.0.45
+          Properties:
+            Height: =38
+            Items: =ShowColumns(colActions, "ActionCode")
+            OnChange: |
+              =UpdateContext(
+                  {
+                      locDecision: LookUp(colActions, ActionCode = drpDecisionED.Selected.ActionCode, ToStatusCode),
+                      locRequiresReason: Coalesce(
+                          LookUp(colActions, ActionCode = drpDecisionED.Selected.ActionCode, RequiresReason),
+                          false
+                      )
+                  }
+              )
+            Visible: =grpDecisionED.Visible
+            Width: =300
+            X: =grpDecisionED.X + 24
+            Y: =grpDecisionED.Y + 52
+      - txtReasonED:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Height: =38
+            HintText: ="Say what you checked and what you concluded."
+            Visible: =grpDecisionED.Visible
+            Width: =grpDecisionED.Width - 540
+            X: =grpDecisionED.X + 340
+            Y: =grpDecisionED.Y + 52
+      - txtReasonHintED:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =24
+            Text: ="A reason is required for this decision and cannot be edited later."
+            Visible: =grpDecisionED.Visible && locRequiresReason
+            Width: =700
+            X: =grpDecisionED.X + 24
+            Y: =grpDecisionED.Y + 98
+      - txtReasonNudgeED:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#8A6100")
+            Height: =24
+            Text: ="That is quite short. Say what you checked, not just that you checked."
+            Visible: |
+              =grpDecisionED.Visible && locRequiresReason
+               && Len(Trim(txtReasonED.Text)) >= Coalesce(gblCfg.ReasonMin, 10)
+               && Len(Trim(txtReasonED.Text)) < 30
+            Width: =600
+            X: =grpDecisionED.X + 740
+            Y: =grpDecisionED.Y + 98
+      - btnSaveDecisionED:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            Color: =ColorValue("#FFFFFF")
+            DisplayMode: |
+              =If(
+                  IsBlank(locDecision)
+                      || (locRequiresReason && Len(Trim(txtReasonED.Text)) < Coalesce(gblCfg.ReasonMin, 10))
+                      || gblBusy,
+                  DisplayMode.Disabled,
+                  DisplayMode.Edit
+              )
+            Fill: =ColorValue("#0F6CBD")
+            Height: =38
+            HoverFill: =ColorValue("#0C5A9E")
+            OnSelect: |
+              =Set(gblBusy, true);
+              IfError(
+                  Set(
+                      gblWriteResult,
+                      First(
+                          db_dq_sandbox.dquspSetExceptionStatus(
+                              {
+                                  ActorUpn: gblActorUpn,
+                                  ExceptionId: gblEx.ExceptionId,
+                                  ToStatusCode: locDecision,
+                                  Comment: Trim(txtReasonED.Text),
+                                  RowVersion: gblEx.RowVersionCol
+                              }
+                          ).ResultSets.Table1
+                      )
+                  ),
+                  Set(gblError, {IsVisible: true, Title: "The decision was not saved", Detail: FirstError.Message})
+              );
+              // OPEN QUESTION 1a: the value domain of Outcome is not documented. These branches
+              // assume OK / CONFLICT / FORBIDDEN. Confirm against the procedure body and correct
+              // HERE — this is the only place the values are interpreted on this screen.
+              Switch(
+                  Upper(Coalesce(gblWriteResult.Outcome, "")),
+                  "OK",
+                  Notify("Decision recorded.", NotificationType.Success, 3000);
+                  Reset(txtReasonED);
+                  Select(btnDoReloadED),
+                  "CONFLICT",
+                  // Never retried silently: the user decided against information that has since
+                  // changed. Their typed reason is deliberately left in place.
+                  UpdateContext({locConflict: true});
+                  Select(btnDoReloadED),
+                  "FORBIDDEN",
+                  Notify("You do not have permission to do that. " & Coalesce(gblWriteResult.Message, ""), NotificationType.Error, 6000),
+                  Notify(
+                      Coalesce(gblWriteResult.Message, "Unexpected response from the platform. Nothing was saved."),
+                      NotificationType.Error,
+                      6000
+                  )
+              );
+              Set(gblBusy, false)
+            Text: ="Save"
+            Visible: =grpDecisionED.Visible
+            Width: =152
+            X: =grpDecisionED.X + grpDecisionED.Width - 176
+            Y: =grpDecisionED.Y + 52
+      - txtCommentED:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Height: =36
+            HintText: ="Add a comment without changing the status"
+            Visible: =gblIsSteward && !IsBlank(gblEx.ExceptionId)
+            Width: =Parent.Width - 240
+            X: =32
+            Y: =570
+      - btnAddCommentED:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            DisplayMode: =If(Len(Trim(txtCommentED.Text)) < 3, DisplayMode.Disabled, DisplayMode.Edit)
+            Fill: =ColorValue("#FFFFFF")
+            Height: =36
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: |
+              =Set(gblBusy, true);
+              IfError(
+                  Set(
+                      gblWriteResult,
+                      First(
+                          db_dq_sandbox.dquspAddExceptionComment(
+                              {
+                                  ActorUpn: gblActorUpn,
+                                  ExceptionId: gblEx.ExceptionId,
+                                  Comment: Trim(txtCommentED.Text)
+                              }
+                          ).ResultSets.Table1
+                      )
+                  ),
+                  Set(gblError, {IsVisible: true, Title: "The comment was not saved", Detail: FirstError.Message})
+              );
+              If(
+                  Upper(Coalesce(gblWriteResult.Outcome, "")) = "OK",
+                  Reset(txtCommentED);
+                  Notify("Comment added.", NotificationType.Success, 3000),
+                  Notify(Coalesce(gblWriteResult.Message, "The comment was not saved."), NotificationType.Error, 6000)
+              );
+              Set(gblBusy, false);
+              Select(btnDoReloadED)
+            Text: ="Add comment"
+            Visible: =gblIsSteward && !IsBlank(gblEx.ExceptionId)
+            Width: =168
+            X: =Parent.Width - 200
+            Y: =570
+      - txtHistoryTitleED:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Height: =30
+            Size: =16
+            Text: ="History"
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =300
+            X: =32
+            Y: =618
+      - galHistoryED:
+          Control: Gallery@2.15.0
+          Variant: Vertical
+          Properties:
+            Height: =Parent.Height - 668
+            Items: =colHistory
+            TemplateSize: =44
+            Visible: =!IsBlank(gblEx.ExceptionId)
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =652
+          Children:
+            - txtHistDate:
+                Control: Label@2.5.1
+                Properties:
+                  Height: =44
+                  Text: =Text(ThisItem.ActionAt, "dd mmm")
+                  Width: =110
+                  X: =16
+            - txtHistActor:
+                Control: Label@2.5.1
+                Properties:
+                  Height: =44
+                  Text: =If(ThisItem.IsSystem, "System", ThisItem.ActionByUpn)
+                  Width: =260
+                  X: =136
+            - txtHistText:
+                Control: Label@2.5.1
+                Properties:
+                  Height: =44
+                  Text: |
+                    =Coalesce(
+                        ThisItem.Comment,
+                        ThisItem.ActionCode & " · " & Coalesce(ThisItem.FromStatusCode, "new") & " -> " & ThisItem.ToStatusCode
+                    )
+                  Width: =Parent.TemplateWidth - 422
+                  X: =406
+      - btnDoReloadED:
+          Control: Classic/Button@2.2.0
+          Properties:
+            Height: =1
+            OnSelect: |
+              =Set(
+                  gblExDetail,
+                  db_dq_sandbox.dquspGetExceptionDetail({ActorUpn: gblActorUpn, ExceptionId: locExceptionId})
+              );
+              Set(gblEx, First(gblExDetail.ResultSets.Table1));
+              ClearCollect(colActions, gblExDetail.ResultSets.Table2);
+              ClearCollect(
+                  colHistory,
+                  Filter(
+                  db_dq_sandbox.dquspGetExceptionHistory({ActorUpn: gblActorUpn, ExceptionId: locExceptionId}).ResultSets.Table1,
+                      !IsBlank(HistoryId)
+                  )
+              )
+            Text: ="reload"
+            Visible: =false
+            Width: =1
+            X: =-200
+            Y: =-200
+      - grpConflictScrimED:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =RGBA(0, 0, 0, 0.35)
+            Height: =Parent.Height
+            Visible: =locConflict
+            Width: =Parent.Width
+      - grpConflictCardED:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#FFFFFF")
+            Height: =240
+            Visible: =locConflict
+            Width: =660
+            X: =(Parent.Width - 660) / 2
+            Y: =200
+      - txtConflictTitleED:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Height: =34
+            Size: =18
+            Text: ="This record changed while you were working on it"
+            Visible: =locConflict
+            Width: =grpConflictCardED.Width - 56
+            X: =grpConflictCardED.X + 28
+            Y: =grpConflictCardED.Y + 28
+      - txtConflictBodyED:
+          Control: Label@2.5.1
+          Properties:
+            Height: =100
+            Text: |
+              ="Your decision has not been saved. The current version is now shown behind this message, and your reason has been kept so you do not have to retype it." & Char(10) & Char(10) & "Read what changed, then decide again."
+            Visible: =locConflict
+            Width: =grpConflictCardED.Width - 56
+            X: =grpConflictCardED.X + 28
+            Y: =grpConflictCardED.Y + 72
+      - btnConflictOkED:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            Color: =ColorValue("#FFFFFF")
+            Fill: =ColorValue("#0F6CBD")
+            HoverFill: =ColorValue("#0C5A9E")
+            OnSelect: |
+              =UpdateContext({locConflict: false})
+            Text: ="Review and decide again"
+            Visible: =locConflict
+            Width: =240
+            X: =grpConflictCardED.X + grpConflictCardED.Width - 268
+            Y: =grpConflictCardED.Y + grpConflictCardED.Height - 62
+      - txtErrorED:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#B3261E")
+            Fill: =ColorValue("#FDE7EA")
+            Height: =42
+            Text: =gblError.Title & " — " & gblError.Detail
+            Visible: =gblError.IsVisible
+            Width: =Parent.Width - 300
+            X: =32
+            Y: =Parent.Height - 46

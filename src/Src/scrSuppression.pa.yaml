@@ -1,0 +1,306 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrSuppression:
+    Properties:
+      Fill: =ColorValue("#FFFFFF")
+      OnVisible: |
+        =Set(gblBusy, true);
+        Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+        UpdateContext({locSupRuleId: Blank(), locSupSource: "", locSupDays: 90});
+
+        // Expiry is chosen as a duration rather than a calendar date: it removes a control
+        // whose property surface is unverified, and it enforces the configured cap by
+        // construction — every option is inside SuppressionMaxDays.
+        // Built in ONE statement. Filtering a collection while ClearCollect-ing into
+        // that same collection empties it: ClearCollect clears first, so the Filter
+        // then reads nothing. That is what left the expiry picker blank.
+        ClearCollect(
+            colSupDuration,
+            Filter(
+                Table(
+                    {Days: 30, Label: "30 days"},
+                    {Days: 60, Label: "60 days"},
+                    {Days: 90, Label: "90 days"},
+                    {Days: 180, Label: "180 days"},
+                    {Days: 365, Label: "365 days"}
+                ),
+                Days <= Coalesce(gblCfg.SuppressionMaxDays, 365)
+            )
+        );
+
+        // There is no usp_GetSuppressibleRules; the rule list serves the picker.
+        IfError(
+            ClearCollect(
+                colSupRules,
+                Filter(
+                db_dq_sandbox.dquspGetRuleList(
+                    {
+                        ActorUpn: gblActorUpn,
+                        ActiveOnly: true,
+                        DomainCode: Blank(),
+                        TargetLayer: Blank(),
+                        Page: 1,
+                        PageSize: 200
+                    }
+                ).ResultSets.Table1,
+                    !IsBlank(RuleId)
+                )
+            ),
+            Set(gblError, {IsVisible: true, Title: "Could not load rules", Detail: FirstError.Message})
+        );
+        Set(gblBusy, false)
+    Children:
+      - grpHeaderSU:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#0F6CBD")
+            Height: =64
+            Width: =Parent.Width
+      - txtBrandSU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#FFFFFF")
+            FontWeight: =FontWeight.Semibold
+            Height: =64
+            Size: =20
+            Text: ="Data Trust"
+            Width: =260
+            X: =32
+      - btnBackSU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =32
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Back()
+            Text: ="Back"
+            Width: =120
+            X: =Parent.Width - 160
+            Y: =76
+      - txtTitleSU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#1B1B1B")
+            FontWeight: =FontWeight.Semibold
+            Size: =24
+            Text: ="Request a suppression"
+            Width: =600
+            X: =32
+            Y: =124
+      - grpCardSU:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Height: =340
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =180
+      - txtLblRuleSU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =22
+            Size: =12
+            Text: ="Rule"
+            Width: =300
+            X: =grpCardSU.X + 32
+            Y: =grpCardSU.Y + 28
+      - drpRuleSU:
+          Control: DropDown@0.0.45
+          Properties:
+            Height: =38
+            Items: =ShowColumns(colSupRules, "RuleName")
+            OnChange: |
+              =UpdateContext({locSupRuleId: LookUp(colSupRules, RuleName = drpRuleSU.Selected.RuleName, RuleId)})
+            Width: =520
+            X: =grpCardSU.X + 32
+            Y: =grpCardSU.Y + 52
+      - txtLblSourceSU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =22
+            Size: =12
+            Text: ="Source system"
+            Width: =300
+            X: =grpCardSU.X + 580
+            Y: =grpCardSU.Y + 28
+      - drpSourceSU:
+          Control: DropDown@0.0.45
+          Properties:
+            Height: =38
+            Items: =ShowColumns(colLkSource, "Label")
+            OnChange: |
+              =UpdateContext({locSupSource: LookUp(colLkSource, Label = drpSourceSU.Selected.Label, Code)})
+            Width: =260
+            X: =grpCardSU.X + 580
+            Y: =grpCardSU.Y + 52
+      - txtLblExpirySU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =22
+            Size: =12
+            Text: ="Expires in"
+            Width: =300
+            X: =grpCardSU.X + 870
+            Y: =grpCardSU.Y + 28
+      - drpExpirySU:
+          Control: DropDown@0.0.45
+          Properties:
+            Height: =38
+            Items: =ShowColumns(colSupDuration, "Label")
+            OnChange: |
+              =UpdateContext({locSupDays: LookUp(colSupDuration, Label = drpExpirySU.Selected.Label, Days)})
+            Width: =200
+            X: =grpCardSU.X + 870
+            Y: =grpCardSU.Y + 52
+      - txtExpiryEchoSU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =22
+            Size: =12
+            Text: ="Expires on " & Text(DateAdd(Today(), locSupDays, TimeUnit.Days), "d mmmm yyyy")
+            Width: =300
+            X: =grpCardSU.X + 870
+            Y: =grpCardSU.Y + 94
+      - txtLblReasonSU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =22
+            Size: =12
+            Text: ="Why is this pattern acceptable? Required, minimum " & Text(Coalesce(gblCfg.ReasonMin, 10)) & " characters"
+            Width: =800
+            X: =grpCardSU.X + 32
+            Y: =grpCardSU.Y + 130
+      - txtReasonSU:
+          Control: Classic/TextInput@2.3.2
+          Properties:
+            Height: =90
+            HintText: ="Read by the approver and by whoever reviews it at expiry."
+            Width: =grpCardSU.Width - 64
+            X: =grpCardSU.X + 32
+            Y: =grpCardSU.Y + 154
+      - txtImpactSU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#8A6100")
+            Text: ="The number of open exceptions matching this scope is not yet available — no procedure exists to count them. Raised with the platform team."
+            Width: =grpCardSU.Width - 400
+            X: =grpCardSU.X + 32
+            Y: =grpCardSU.Y + 254
+      - btnCancelSU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            BorderThickness: =1
+            Color: =ColorValue("#1B1B1B")
+            Fill: =ColorValue("#FFFFFF")
+            Height: =38
+            HoverFill: =ColorValue("#EAF3FB")
+            OnSelect: =Back()
+            Text: ="Cancel"
+            Width: =130
+            X: =grpCardSU.X + grpCardSU.Width - 300
+            Y: =grpCardSU.Y + grpCardSU.Height - 60
+      - btnRequestSU:
+          Control: Classic/Button@2.2.0
+          Properties:
+            BorderColor: =ColorValue("#0F6CBD")
+            Color: =ColorValue("#FFFFFF")
+            DisplayMode: |
+              =If(
+                  IsBlank(locSupRuleId) || Len(Trim(txtReasonSU.Text)) < Coalesce(gblCfg.ReasonMin, 10),
+                  DisplayMode.Disabled,
+                  DisplayMode.Edit
+              )
+            Fill: =ColorValue("#0F6CBD")
+            Height: =38
+            HoverFill: =ColorValue("#0C5A9E")
+            OnSelect: |
+              =Set(gblBusy, true);
+              Set(gblError, {IsVisible: false, Title: "", Detail: ""});
+              IfError(
+                  Set(
+                      gblWriteResult,
+                      First(
+                          db_dq_sandbox.dquspRequestSuppression(
+                              {
+                                  ActorUpn: gblActorUpn,
+                                  RuleId: locSupRuleId,
+                                  // CONTRACT GAP 11: the expected ScopeJson shape is undocumented.
+                                  // There is no SourceSystem parameter, so the source selection is
+                                  // carried here. Confirm the shape the procedure parses.
+                                  ScopeJson: "{""SourceSystem"":""" & locSupSource & """}",
+                                  Reason: Trim(txtReasonSU.Text),
+                                  ExpiresAt: Text(DateAdd(Today(), locSupDays, TimeUnit.Days), "yyyy-mm-dd")
+                              }
+                          ).ResultSets.Table1
+                      )
+                  ),
+                  Set(gblError, {IsVisible: true, Title: "The request was not submitted", Detail: FirstError.Message})
+              );
+              If(
+                  Upper(Coalesce(gblWriteResult.Outcome, "")) = "OK",
+                  Notify("Suppression requested. An approver will decide.", NotificationType.Success, 4000);
+                  Back(),
+                  Notify(Coalesce(gblWriteResult.Message, "The request was not submitted."), NotificationType.Error, 6000)
+              );
+              Set(gblBusy, false)
+            Text: ="Request"
+            Width: =130
+            X: =grpCardSU.X + grpCardSU.Width - 158
+            Y: =grpCardSU.Y + grpCardSU.Height - 60
+      - grpPendingSU:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Height: =72
+            Width: =Parent.Width - 64
+            X: =32
+            Y: =grpCardSU.Y + grpCardSU.Height + 16
+      - txtPendingTitleSU:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Height: =24
+            Size: =14
+            Text: ="Nothing is hidden yet."
+            Width: =400
+            X: =grpPendingSU.X + 24
+            Y: =grpPendingSU.Y + 14
+      - txtPendingBodySU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =30
+            Text: ="The request goes to an approver. Until they decide, these exceptions stay in the queue. Once approved they are still detected and still counted — they are hidden from the default queue, not from the system."
+            Width: =grpPendingSU.Width - 48
+            X: =grpPendingSU.X + 24
+            Y: =grpPendingSU.Y + 38
+      - txtErrorSU:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#B3261E")
+            Fill: =ColorValue("#FDE7EA")
+            Height: =42
+            Text: =gblError.Title & " — " & gblError.Detail
+            Visible: =gblError.IsVisible
+            Width: =Parent.Width - 240
+            X: =32
+            Y: =Parent.Height - 46

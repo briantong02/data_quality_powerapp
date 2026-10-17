@@ -1,0 +1,48 @@
+# ************************************************************************************************
+# Warning: YAML source code for Canvas Apps should only be used to review changes made within Power Apps Studio and for minor edits (Preview).
+# Use the maker portal to create and edit your Power Apps.
+# 
+# The schema file for Canvas Apps is available at https://go.microsoft.com/fwlink/?linkid=2304907
+# 
+# For more information, visit https://go.microsoft.com/fwlink/?linkid=2292623
+# ************************************************************************************************
+Screens:
+  scrNoAccess:
+    Children:
+      - grpNoAccessCard:
+          Control: GroupContainer@1.5.0
+          Variant: ManualLayout
+          Properties:
+            Fill: =ColorValue("#EEF3F8")
+            Height: =300
+            Width: =720
+            X: =(Parent.Width - Self.Width) / 2
+            Y: =(Parent.Height - Self.Height) / 2
+      - txtNoAccessTitle:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Size: =20
+            Text: ="No role has been assigned to you yet."
+            Width: =grpNoAccessCard.Width - 80
+            X: =grpNoAccessCard.X + 40
+            Y: =grpNoAccessCard.Y + 40
+      - txtNoAccessBody:
+          Control: Label@2.5.1
+          Properties:
+            Color: =ColorValue("#5A6570")
+            Height: =110
+            Text: |
+              ="This tool shows exceptions for the domains you are responsible for. Until a role is assigned there is nothing to show you — this is not an empty queue." & Char(10) & Char(10) & "Contact the platform team and give them your sign-in name."
+            Width: =grpNoAccessCard.Width - 80
+            X: =grpNoAccessCard.X + 40
+            Y: =txtNoAccessTitle.Y + 52
+      - txtNoAccessUpn:
+          Control: Label@2.5.1
+          Properties:
+            FontWeight: =FontWeight.Semibold
+            Height: =36
+            Text: =gblActorUpn
+            Width: =520
+            X: =grpNoAccessCard.X + 40
+            Y: =txtNoAccessBody.Y + 116
