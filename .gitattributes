@@ -1,0 +1,16 @@
+# Canvas App source. Power Apps Studio writes these with CRLF, but they are
+# committed with LF; normalising here keeps a round-trip through Studio from
+# showing every line of a screen as changed.
+*.pa.yaml text eol=lf
+
+# Packages, exports and documents: archives, not text. Never line-ending
+# converted, never diffed as text.
+*.msapp binary
+*.msapr binary
+*.zip   binary
+*.docx  binary
+*.png   binary
+
+# Everything else is left to Git's defaults on purpose: the unpacked
+# Controls/*.json and References/*.json are committed with CRLF, and adding an
+# eol rule for them would rewrite all 16 files for no benefit.
