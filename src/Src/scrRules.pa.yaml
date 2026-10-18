@@ -165,7 +165,7 @@ Screens:
               );
               IfError(
                   Set(
-                      gblWriteResult,
+                      gblWriteResultRU,
                       First(
                           db_dq_sandbox.dquspUpdateRuleBinding(
                               {
@@ -190,14 +190,14 @@ Screens:
                   Set(gblError, {IsVisible: true, Title: "The change was not saved", Detail: FirstError.Message})
               );
               Switch(
-                  Upper(Coalesce(gblWriteResult.Outcome, "")),
+                  Upper(Coalesce(gblWriteResultRU.Outcome, "")),
                   "OK",
                   Notify("Change recorded against your name. It takes effect on the next run.", NotificationType.Success, 4000),
                   "CONFLICT",
                   Notify("Someone else changed this rule while you were looking at it. The list has been reloaded; nothing was saved.", NotificationType.Warning, 8000),
                   "FORBIDDEN",
                   Notify("You do not have permission to change this rule.", NotificationType.Error, 6000),
-                  Notify(Coalesce(gblWriteResult.Message, "The change was not saved."), NotificationType.Error, 6000)
+                  Notify(Coalesce(gblWriteResultRU.Message, "The change was not saved."), NotificationType.Error, 6000)
               );
               Set(gblBusy, false);
               Select(btnDoLoadRules)

@@ -214,7 +214,7 @@ Screens:
             FontWeight: =FontWeight.Semibold
             Height: =28
             Text: |
-              =Concat(Distinct(colScope, RoleCode), Result, " / ") & " · " &
+              =Concat(Distinct(colScope, RoleCode), Value, " / ") & " · " &
                If(
                    CountRows(Filter(colScope, IsBlank(DomainCode))) > 0,
                    "All domains",

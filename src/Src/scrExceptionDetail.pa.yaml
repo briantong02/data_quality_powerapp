@@ -23,7 +23,12 @@ Screens:
             IsBlank(locExceptionId),
             Clear(colActions);
             Clear(colHistory);
-            Set(gblEx, Blank()),
+            Set(gblEx, Blank());
+            // Both arms of If() must yield the same type. The other arm ends in an
+            // IfError() wrapping ClearCollect(), which yields a Table, so each arm is
+            // closed with the same Boolean statement - which is also the only place
+            // the busy flag needs clearing.
+            Set(gblBusy, false),
 
             IfError(
                 Set(
@@ -48,9 +53,9 @@ Screens:
                     )
                 ),
                 Set(gblError, {IsVisible: true, Title: "Could not load history", Detail: FirstError.Message})
-            )
-        );
-        Set(gblBusy, false)
+            );
+            Set(gblBusy, false)
+        )
     Children:
       - grpHeaderED:
           Control: GroupContainer@1.5.0

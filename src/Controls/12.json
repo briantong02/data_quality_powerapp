@@ -3857,7 +3857,7 @@
           {
             "Property": "Text",
             "Category": "Data",
-            "InvariantScript": "Concat(Distinct(colScope, RoleCode), Result, \" / \") & \" · \" &\n If(\n     CountRows(Filter(colScope, IsBlank(DomainCode))) > 0,\n     \"All domains\",\n     Concat(gblDomains, Label, \", \")\n )\n",
+            "InvariantScript": "Concat(Distinct(colScope, RoleCode), Value, \" / \") & \" · \" &\n If(\n     CountRows(Filter(colScope, IsBlank(DomainCode))) > 0,\n     \"All domains\",\n     Concat(gblDomains, Label, \", \")\n )\n",
             "RuleProviderType": "Unknown"
           },
           {
