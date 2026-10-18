@@ -330,7 +330,7 @@ Screens:
                 Control: DropDown@0.0.45
                 Properties:
                   Height: =36
-                  Items: =ShowColumns(colLkSeverity, "Label")
+                  Items: =ShowColumns(colLkSeverity, Label)
                   OnChange: |
                     =UpdateContext(
                         {

@@ -3550,7 +3550,7 @@
           {
             "Property": "Items",
             "Category": "Data",
-            "InvariantScript": "ShowColumns(colSupRules, \"RuleName\")",
+            "InvariantScript": "ShowColumns(colSupRules, RuleName)",
             "RuleProviderType": "Unknown"
           },
           {
@@ -3716,7 +3716,7 @@
           {
             "Property": "Items",
             "Category": "Data",
-            "InvariantScript": "ShowColumns(colLkSource, \"Label\")",
+            "InvariantScript": "ShowColumns(colLkSource, Label)",
             "RuleProviderType": "Unknown"
           },
           {
@@ -3882,7 +3882,7 @@
           {
             "Property": "Items",
             "Category": "Data",
-            "InvariantScript": "ShowColumns(colSupDuration, \"Label\")",
+            "InvariantScript": "ShowColumns(colSupDuration, Label)",
             "RuleProviderType": "Unknown"
           },
           {

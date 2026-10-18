@@ -86,7 +86,7 @@
       {
         "Property": "OnVisible",
         "Category": "Behavior",
-        "InvariantScript": "// A stale global error from another screen must not appear here.\nSet(gblError, {IsVisible: false, Title: \"\", Detail: \"\"});\n\n// Filter option lists. Each carries an \"all\" row whose Code is blank.\n// Dropdowns are fed a SINGLE-COLUMN table (Label only) so there is no ambiguity\n// about which column displays; the code is mapped back with LookUp.\nClearCollect(colFDomain, {Code: \"\", Label: \"All domains\"});\nCollect(colFDomain, ShowColumns(gblDomains, \"Code\", \"Label\"));\n\n// The queue filters on StatusGroup: OPEN | RESOLVED | SUPPRESSED | ALL.\n// Confirmed from the procedure body and from the dq.Lookup 'StatusGroup' set.\nClearCollect(colFStatus, ShowColumns(colLkStatusGroup, \"Code\", \"Label\"));\n\nClearCollect(colFSeverity, {Code: \"\", Label: \"All severities\"});\nCollect(colFSeverity, ShowColumns(colLkSeverity, \"Code\", \"Label\"));\n\nClearCollect(colFSource, {Code: \"\", Label: \"All sources\"});\nCollect(colFSource, ShowColumns(colLkSource, \"Code\", \"Label\"));\n\n// The procedure translates the literal 'me' to the actor. There is NO\n// unassigned filter - usp_GetExceptionQueue only supports\n// \"@AssigneeUpn IS NULL OR AssignedToUpn = @AssigneeUpn\" - so that option\n// is deliberately absent rather than offered and silently returning nothing.\nClearCollect(\n    colFAssignee,\n    {Code: \"\", Label: \"Anyone\"},\n    {Code: \"me\", Label: \"Me\"}\n);\n\nUpdateContext(\n    {\n        locDomain: \"\",\n        locStatus: \"OPEN\",\n        locSeverity: Coalesce(locInSeverity, \"\"),\n        locSource: \"\",\n        locAssignee: Coalesce(locInAssignee, \"\"),\n        locOverdue: Coalesce(locInOverdue, false),\n        locSearch: \"\",\n        locClusterId: locInCluster,\n        locPage: 1,\n        locBulkOpen: false,\n        locBulkStatus: \"\"\n    }\n);\nSelect(btnDoLoadQueue)\n",
+        "InvariantScript": "// A stale global error from another screen must not appear here.\nSet(gblError, {IsVisible: false, Title: \"\", Detail: \"\"});\n\n// Filter option lists. Each carries an \"all\" row whose Code is blank.\n// Dropdowns are fed a SINGLE-COLUMN table (Label only) so there is no ambiguity\n// about which column displays; the code is mapped back with LookUp.\nClearCollect(colFDomain, {Code: \"\", Label: \"All domains\"});\nCollect(colFDomain, ShowColumns(gblDomains, Code, Label));\n\n// The queue filters on StatusGroup: OPEN | RESOLVED | SUPPRESSED | ALL.\n// Confirmed from the procedure body and from the dq.Lookup 'StatusGroup' set.\nClearCollect(colFStatus, ShowColumns(colLkStatusGroup, Code, Label));\n\nClearCollect(colFSeverity, {Code: \"\", Label: \"All severities\"});\nCollect(colFSeverity, ShowColumns(colLkSeverity, Code, Label));\n\nClearCollect(colFSource, {Code: \"\", Label: \"All sources\"});\nCollect(colFSource, ShowColumns(colLkSource, Code, Label));\n\n// The procedure translates the literal 'me' to the actor. There is NO\n// unassigned filter - usp_GetExceptionQueue only supports\n// \"@AssigneeUpn IS NULL OR AssignedToUpn = @AssigneeUpn\" - so that option\n// is deliberately absent rather than offered and silently returning nothing.\nClearCollect(\n    colFAssignee,\n    {Code: \"\", Label: \"Anyone\"},\n    {Code: \"me\", Label: \"Me\"}\n);\n\nUpdateContext(\n    {\n        locDomain: \"\",\n        locStatus: \"OPEN\",\n        locSeverity: Coalesce(locInSeverity, \"\"),\n        locSource: \"\",\n        locAssignee: Coalesce(locInAssignee, \"\"),\n        locOverdue: Coalesce(locInOverdue, false),\n        locSearch: \"\",\n        locClusterId: locInCluster,\n        locPage: 1,\n        locBulkOpen: false,\n        locBulkStatus: \"\"\n    }\n);\nSelect(btnDoLoadQueue)\n",
         "RuleProviderType": "Unknown"
       }
     ],
@@ -9957,7 +9957,7 @@
           {
             "Property": "Items",
             "Category": "Data",
-            "InvariantScript": "ShowColumns(colFDomain, \"Label\")",
+            "InvariantScript": "ShowColumns(colFDomain, Label)",
             "RuleProviderType": "Unknown"
           },
           {
@@ -10123,7 +10123,7 @@
           {
             "Property": "Items",
             "Category": "Data",
-            "InvariantScript": "ShowColumns(colFStatus, \"Label\")",
+            "InvariantScript": "ShowColumns(colFStatus, Label)",
             "RuleProviderType": "Unknown"
           },
           {
@@ -10289,7 +10289,7 @@
           {
             "Property": "Items",
             "Category": "Data",
-            "InvariantScript": "ShowColumns(colFSeverity, \"Label\")",
+            "InvariantScript": "ShowColumns(colFSeverity, Label)",
             "RuleProviderType": "Unknown"
           },
           {
@@ -10455,7 +10455,7 @@
           {
             "Property": "Items",
             "Category": "Data",
-            "InvariantScript": "ShowColumns(colFSource, \"Label\")",
+            "InvariantScript": "ShowColumns(colFSource, Label)",
             "RuleProviderType": "Unknown"
           },
           {
@@ -10621,7 +10621,7 @@
           {
             "Property": "Items",
             "Category": "Data",
-            "InvariantScript": "ShowColumns(colFAssignee, \"Label\")",
+            "InvariantScript": "ShowColumns(colFAssignee, Label)",
             "RuleProviderType": "Unknown"
           },
           {
@@ -13559,7 +13559,7 @@
           {
             "Property": "Items",
             "Category": "Data",
-            "InvariantScript": "ShowColumns(colLkStatus, \"Label\")",
+            "InvariantScript": "ShowColumns(colLkStatus, Label)",
             "RuleProviderType": "Unknown"
           },
           {

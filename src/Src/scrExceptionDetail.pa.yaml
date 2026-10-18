@@ -283,7 +283,7 @@ Screens:
           Control: DropDown@0.0.45
           Properties:
             Height: =38
-            Items: =ShowColumns(colActions, "ActionCode")
+            Items: =ShowColumns(colActions, ActionCode)
             OnChange: |
               =UpdateContext(
                   {

@@ -18,17 +18,17 @@ Screens:
         // Dropdowns are fed a SINGLE-COLUMN table (Label only) so there is no ambiguity
         // about which column displays; the code is mapped back with LookUp.
         ClearCollect(colFDomain, {Code: "", Label: "All domains"});
-        Collect(colFDomain, ShowColumns(gblDomains, "Code", "Label"));
+        Collect(colFDomain, ShowColumns(gblDomains, Code, Label));
 
         // The queue filters on StatusGroup: OPEN | RESOLVED | SUPPRESSED | ALL.
         // Confirmed from the procedure body and from the dq.Lookup 'StatusGroup' set.
-        ClearCollect(colFStatus, ShowColumns(colLkStatusGroup, "Code", "Label"));
+        ClearCollect(colFStatus, ShowColumns(colLkStatusGroup, Code, Label));
 
         ClearCollect(colFSeverity, {Code: "", Label: "All severities"});
-        Collect(colFSeverity, ShowColumns(colLkSeverity, "Code", "Label"));
+        Collect(colFSeverity, ShowColumns(colLkSeverity, Code, Label));
 
         ClearCollect(colFSource, {Code: "", Label: "All sources"});
-        Collect(colFSource, ShowColumns(colLkSource, "Code", "Label"));
+        Collect(colFSource, ShowColumns(colLkSource, Code, Label));
 
         // The procedure translates the literal 'me' to the actor. There is NO
         // unassigned filter - usp_GetExceptionQueue only supports
@@ -234,7 +234,7 @@ Screens:
           Control: DropDown@0.0.45
           Properties:
             Height: =36
-            Items: =ShowColumns(colFDomain, "Label")
+            Items: =ShowColumns(colFDomain, Label)
             OnChange: |
               =UpdateContext({locDomain: LookUp(colFDomain, Label = drpDomainQU.Selected.Label, Code)})
             Width: =180
@@ -254,7 +254,7 @@ Screens:
           Control: DropDown@0.0.45
           Properties:
             Height: =36
-            Items: =ShowColumns(colFStatus, "Label")
+            Items: =ShowColumns(colFStatus, Label)
             OnChange: |
               =UpdateContext({locStatus: LookUp(colFStatus, Label = drpStatusQU.Selected.Label, Code)})
             Width: =160
@@ -274,7 +274,7 @@ Screens:
           Control: DropDown@0.0.45
           Properties:
             Height: =36
-            Items: =ShowColumns(colFSeverity, "Label")
+            Items: =ShowColumns(colFSeverity, Label)
             OnChange: |
               =UpdateContext({locSeverity: LookUp(colFSeverity, Label = drpSeverityQU.Selected.Label, Code)})
             Width: =160
@@ -294,7 +294,7 @@ Screens:
           Control: DropDown@0.0.45
           Properties:
             Height: =36
-            Items: =ShowColumns(colFSource, "Label")
+            Items: =ShowColumns(colFSource, Label)
             OnChange: |
               =UpdateContext({locSource: LookUp(colFSource, Label = drpSourceQU.Selected.Label, Code)})
             Width: =160
@@ -314,7 +314,7 @@ Screens:
           Control: DropDown@0.0.45
           Properties:
             Height: =36
-            Items: =ShowColumns(colFAssignee, "Label")
+            Items: =ShowColumns(colFAssignee, Label)
             OnChange: |
               =UpdateContext({locAssignee: LookUp(colFAssignee, Label = drpAssigneeQU.Selected.Label, Code)})
             Width: =170
@@ -747,7 +747,7 @@ Screens:
           Control: DropDown@0.0.45
           Properties:
             Height: =36
-            Items: =ShowColumns(colLkStatus, "Label")
+            Items: =ShowColumns(colLkStatus, Label)
             OnChange: |
               =UpdateContext({locBulkStatus: LookUp(colLkStatus, Label = drpBulkStatusQU.Selected.Label, Code)})
             Visible: =locBulkOpen

@@ -9803,7 +9803,7 @@
           {
             "Property": "Items",
             "Category": "Data",
-            "InvariantScript": "ShowColumns(colActions, \"ActionCode\")",
+            "InvariantScript": "ShowColumns(colActions, ActionCode)",
             "RuleProviderType": "Unknown"
           },
           {

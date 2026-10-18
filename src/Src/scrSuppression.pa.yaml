@@ -121,7 +121,7 @@ Screens:
           Control: DropDown@0.0.45
           Properties:
             Height: =38
-            Items: =ShowColumns(colSupRules, "RuleName")
+            Items: =ShowColumns(colSupRules, RuleName)
             OnChange: |
               =UpdateContext({locSupRuleId: LookUp(colSupRules, RuleName = drpRuleSU.Selected.RuleName, RuleId)})
             Width: =520
@@ -141,7 +141,7 @@ Screens:
           Control: DropDown@0.0.45
           Properties:
             Height: =38
-            Items: =ShowColumns(colLkSource, "Label")
+            Items: =ShowColumns(colLkSource, Label)
             OnChange: |
               =UpdateContext({locSupSource: LookUp(colLkSource, Label = drpSourceSU.Selected.Label, Code)})
             Width: =260
@@ -161,7 +161,7 @@ Screens:
           Control: DropDown@0.0.45
           Properties:
             Height: =38
-            Items: =ShowColumns(colSupDuration, "Label")
+            Items: =ShowColumns(colSupDuration, Label)
             OnChange: |
               =UpdateContext({locSupDays: LookUp(colSupDuration, Label = drpExpirySU.Selected.Label, Days)})
             Width: =200

@@ -11030,7 +11030,7 @@
               {
                 "Property": "Items",
                 "Category": "Data",
-                "InvariantScript": "ShowColumns(colLkSeverity, \"Label\")",
+                "InvariantScript": "ShowColumns(colLkSeverity, Label)",
                 "RuleProviderType": "Unknown"
               },
               {
